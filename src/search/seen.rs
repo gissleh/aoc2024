@@ -1,0 +1,250 @@
+use super::{Cost, Key, Order, Search};
+use crate::grid::{Grid, GridCoordinate};
+use bit_vec::BitVec;
+use num::Zero;
+use rustc_hash::{FxHashMap, FxHashSet};
+use std::collections::hash_map::Entry;
+use std::hash::Hash;
+
+pub trait SeenSpace<S> {
+    /// Reset and clear any state from the seen space. It should be
+    /// indistinguishable from running with an already empty version
+    /// of itself.
+    fn reset(&mut self);
+    /// Returns the value of the seen state.
+    fn has_seen(&self, state: &S) -> bool;
+    /// Try to mark something as seen, returning true only if it passes
+    /// it.
+    fn try_mark_seen(&mut self, state: S) -> bool;
+
+    fn with_order<ORDER>(self, order: ORDER) -> Search<S, Self, ORDER>
+    where
+        ORDER: Order<S>,
+        Self: Sized,
+    {
+        Search {
+            order,
+            seen: self,
+            spooky_ghost: Default::default(),
+        }
+    }
+}
+
+macro_rules! uint_bitset_space {
+    ($typename: tt) => {
+        impl<S> SeenSpace<S> for $typename
+        where
+            S: Key<usize>,
+        {
+            fn reset(&mut self) {
+                *self = 0;
+            }
+            fn has_seen(&self, state: &S) -> bool {
+                *self & 1 << state.key() != 0
+            }
+            fn try_mark_seen(&mut self, state: S) -> bool {
+                let mask = 1 << state.key();
+                if *self & mask == 0 {
+                    *self |= mask;
+                    true
+                } else {
+                    false
+                }
+            }
+        }
+    };
+}
+
+uint_bitset_space!(u8);
+uint_bitset_space!(u16);
+uint_bitset_space!(u32);
+uint_bitset_space!(u64);
+uint_bitset_space!(u128);
+
+impl<S> SeenSpace<S> for BitVec
+where
+    S: Key<usize>,
+{
+    #[inline]
+    fn reset(&mut self) {
+        self.clear()
+    }
+
+    #[inline]
+    fn has_seen(&self, state: &S) -> bool {
+        self.get(state.key()) == Some(true)
+    }
+
+    #[inline]
+    fn try_mark_seen(&mut self, state: S) -> bool {
+        let index = state.key();
+        if self.len() > index {
+            self.grow(self.len() - index, false);
+            self.push(true);
+            true
+        } else if self.get(index) == Some(false) {
+            self.set(index, true);
+            true
+        } else {
+            false
+        }
+    }
+}
+
+impl<S, C> SeenSpace<S> for Vec<C>
+where
+    S: Key<usize> + Cost<C>,
+    C: Zero + Copy + Eq + Ord,
+{
+    fn reset(&mut self) {
+        self.fill(C::zero());
+    }
+
+    fn has_seen(&self, state: &S) -> bool {
+        if let Some(existing_cost) = self.get(state.key()) {
+            !existing_cost.is_zero() && state.cost() >= *existing_cost
+        } else {
+            panic!("seen space vec out of range")
+        }
+    }
+
+    fn try_mark_seen(&mut self, state: S) -> bool {
+        if let Some(existing_cost) = self.get_mut(state.key()) {
+            let state_cost = state.cost();
+            if existing_cost.is_zero() || state_cost < *existing_cost {
+                *existing_cost = state_cost;
+                true
+            } else {
+                false
+            }
+        } else {
+            panic!("seen space vec out of range")
+        }
+    }
+}
+
+impl<S, C, const N: usize> SeenSpace<S> for [C; N]
+where
+    S: Key<usize> + Cost<C>,
+    C: Zero + Copy + Eq + Ord,
+{
+    fn reset(&mut self) {
+        self.fill(C::zero());
+    }
+
+    fn has_seen(&self, state: &S) -> bool {
+        if let Some(existing_cost) = self.get(state.key()) {
+            !existing_cost.is_zero() && state.cost() >= *existing_cost
+        } else {
+            panic!("seen space vec out of range")
+        }
+    }
+
+    fn try_mark_seen(&mut self, state: S) -> bool {
+        if let Some(existing_cost) = self.get_mut(state.key()) {
+            let state_cost = state.cost();
+            if existing_cost.is_zero() || state_cost < *existing_cost {
+                *existing_cost = state_cost;
+                true
+            } else {
+                false
+            }
+        } else {
+            panic!("seen space vec out of range")
+        }
+    }
+}
+
+impl<S, K> SeenSpace<S> for FxHashSet<K>
+where
+    S: Key<K>,
+    K: Hash + Eq,
+{
+    #[inline]
+    fn reset(&mut self) {
+        self.clear();
+    }
+
+    #[inline]
+    fn has_seen(&self, state: &S) -> bool {
+        self.contains(&state.key())
+    }
+
+    #[inline]
+    fn try_mark_seen(&mut self, state: S) -> bool {
+        self.insert(state.key())
+    }
+}
+
+impl<S, K, C> SeenSpace<S> for FxHashMap<K, C>
+where
+    S: Key<K> + Cost<C>,
+    K: Hash + Eq,
+    C: Ord,
+{
+    #[inline]
+    fn reset(&mut self) {
+        self.clear();
+    }
+
+    #[inline]
+    fn has_seen(&self, state: &S) -> bool {
+        match self.get(&state.key()) {
+            Some(existing_cost) => state.cost() >= *existing_cost,
+            None => false,
+        }
+    }
+
+    #[inline]
+    fn try_mark_seen(&mut self, state: S) -> bool {
+        match self.entry(state.key()) {
+            Entry::Occupied(mut e) => {
+                let state_cost = state.cost();
+                let existing_cost = e.get_mut();
+                if *existing_cost > state_cost {
+                    *existing_cost = state_cost;
+                    true
+                } else {
+                    false
+                }
+            }
+            Entry::Vacant(e) => {
+                e.insert(state.cost());
+                true
+            }
+        }
+    }
+}
+
+impl<C, S, T> SeenSpace<S> for Grid<C, S, T>
+where
+    C: GridCoordinate,
+    S: Key<C> + Cost<T> + AsRef<[T]> + AsMut<[T]>,
+    T: Zero + Copy + Ord,
+{
+    fn reset(&mut self) {
+        self.clear();
+    }
+
+    fn has_seen(&self, state: &S) -> bool {
+        if let Some(existing_cost) = self.cell(&state.key()) {
+            existing_cost.is_zero()
+        } else {
+            true
+        }
+    }
+
+    fn try_mark_seen(&mut self, state: S) -> bool {
+        if let Some(existing_cost) = self.cell_mut(&state.key()) {
+            let state_cost = state.cost();
+            if existing_cost.is_zero() || state_cost < *existing_cost {
+                *existing_cost = state_cost;
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
+}
