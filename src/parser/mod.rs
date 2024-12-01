@@ -1,10 +1,14 @@
 mod and;
 mod basic;
 mod conditional;
+mod delimiter;
+mod map;
 mod numbers;
 mod repeat;
 mod within;
 
+use crate::parser::delimiter::DelimitedBy;
+use crate::parser::map::Map;
 use crate::parser::repeat::{Repeat, RepeatFold};
 use crate::parser::within::{QuotedBy, Within};
 use crate::utils::GatherTarget;
@@ -17,16 +21,37 @@ pub trait Parser<'i, T>: Sized {
     /// The main parsing function.
     fn parse(&self, input: &'i [u8]) -> Option<(T, &'i [u8])>;
 
-    /// The main parsing function.
+    /// Parse, but do special behavior if it is the first in a series.
+    #[inline]
+    fn parse_first(&self, input: &'i [u8]) -> Option<(T, &'i [u8])> {
+        self.parse(input)
+    }
+
+    /// Parse and drop the remaining input.
     #[inline]
     fn parse_value(&self, input: &'i [u8]) -> Option<T> {
         self.parse(input).map(|(value, _)| value)
+    }
+
+    /// Parse and return only if that consumed the whole input.
+    #[inline]
+    fn parse_full(&self, input: &'i [u8]) -> Option<T> {
+        match self.parse(input) {
+            Some((value, next)) if next.is_empty() => Some(value),
+            _ => None,
+        }
     }
 
     /// Parse and discard the output. Parsers may implement this for optimization.
     #[inline]
     fn parse_discard(&self, input: &'i [u8]) -> Option<&'i [u8]> {
         self.parse(input).map(|(_, next)| next)
+    }
+
+    /// Parse and discard the output, but apply first-specific behavior.
+    #[inline]
+    fn parse_discard_first(&self, input: &'i [u8]) -> Option<&'i [u8]> {
+        self.parse_discard(input)
     }
 
     /// Check if it can be parsed. If parse_discard is optimized, then overriding this one
@@ -72,6 +97,11 @@ pub trait Parser<'i, T>: Sized {
     }
 
     #[inline]
+    fn map<F, TO>(self, f: F) -> Map<Self, F, T, TO> {
+        Map::new(self, f)
+    }
+
+    #[inline]
     fn repeat<G>(self) -> Repeat<T, Self, G>
     where
         G: GatherTarget<T>,
@@ -102,6 +132,10 @@ pub trait Parser<'i, T>: Sized {
         PO: Parser<'i, &'i [u8]>,
     {
         Within::new(self, outer_parser)
+    }
+
+    fn delimited_by<PD, TD>(self, delim: PD) -> DelimitedBy<Self, PD, T, TD> {
+        DelimitedBy::new(self, delim)
     }
 
     #[inline]
@@ -142,10 +176,10 @@ impl<'i> Parser<'i, u8> for u8 {
     }
 }
 
-impl<'i, const N: usize> Parser<'i, &'i [u8]> for [u8; N] {
+impl<'i, const N: usize> Parser<'i, &'i [u8]> for &'static [u8; N] {
     #[inline]
     fn parse(&self, input: &'i [u8]) -> Option<(&'i [u8], &'i [u8])> {
-        if input.starts_with(self.as_slice()) {
+        if input.starts_with(*self) {
             Some((&input[..self.len()], &input[self.len()..]))
         } else {
             None

@@ -85,7 +85,7 @@ impl Runner {
                 }
                 if let Some(shortest) = self.shortest_time() {
                     println!();
-                    println!("Shortest Time: {}", format_duration(shortest));
+                    println!("Total: {}", format_duration(shortest));
                 }
             }
             _ => {

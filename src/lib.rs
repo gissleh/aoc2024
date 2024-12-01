@@ -1,6 +1,5 @@
 #![feature(portable_simd)]
 #![feature(cmp_minmax)]
-extern crate core;
 
 pub mod graph;
 pub mod grid;
