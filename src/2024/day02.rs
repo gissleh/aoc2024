@@ -36,7 +36,7 @@ impl Report {
     fn safe_p2(&self) -> bool {
         match self.unsafety() {
             Unsafety::Safe => true,
-            Unsafety::BadDirection(i) => (i == 1 && self.without(0).safe()) || self.without(i + 1).safe(),
+            Unsafety::BadDirection(i) => (i == 1 && self.without(0).safe()) || (i != 1 && self.without(i).safe()) || self.without(i + 1).safe(),
             Unsafety::BadDiff(i) => self.without(i).safe() || self.without(i+1).safe(),
         }
     }
