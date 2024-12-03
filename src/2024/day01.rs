@@ -15,7 +15,9 @@ pub fn main(r: &mut Runner, input: &[u8]) {
         part_two_alt2(&left_list, &right_list)
     });
     r.set_tail("Part 1");
-    r.part("Part 2 (Combined Loop)", || part_two_alt3(&left_list, &right_list));
+    r.part("Part 2 (Combined Loop)", || {
+        part_two_alt3(&left_list, &right_list)
+    });
 }
 
 fn parse_and_sort(input: &[u8]) -> (Vec<u32>, Vec<u32>) {

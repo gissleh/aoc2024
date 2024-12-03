@@ -2,6 +2,7 @@ use arrayvec::ArrayVec;
 use common::parser;
 use common::parser::Parser;
 use common::runner::Runner;
+use std::fmt::{Display, Formatter};
 
 pub fn main(r: &mut Runner, input: &[u8]) {
     let reports = r.prep("Parse", || input_parser().parse_value(input).unwrap());
@@ -10,25 +11,19 @@ pub fn main(r: &mut Runner, input: &[u8]) {
 }
 
 fn part_1(reports: &[Report]) -> u32 {
-    reports.iter()
-        .filter(|r| r.safe())
-        .count() as u32
+    reports.iter().filter(|r| r.safe()).count() as u32
 }
 
 fn part_2(reports: &[Report]) -> u32 {
-    reports.iter()
-        .filter(|r| r.safe_p2())
-        .count() as u32
+    reports.iter().filter(|r| r.safe_p2()).count() as u32
 }
 
 fn input_parser<'i>() -> impl Parser<'i, Vec<Report>> {
-    Report::parser()
-        .delimited_by(b'\n')
-        .repeat()
+    Report::parser().delimited_by(b'\n').repeat()
 }
 
 struct Report {
-    levels: ArrayVec<u8, 8>
+    levels: ArrayVec<u8, 8>,
 }
 
 impl Report {
@@ -36,8 +31,12 @@ impl Report {
     fn safe_p2(&self) -> bool {
         match self.unsafety() {
             Unsafety::Safe => true,
-            Unsafety::BadDirection(i) => (i == 1 && self.without(0).safe()) || (i != 1 && self.without(i).safe()) || self.without(i + 1).safe(),
-            Unsafety::BadDiff(i) => self.without(i).safe() || self.without(i+1).safe(),
+            Unsafety::BadDirection(i) => {
+                (i == 1 && self.without(0).safe())
+                    || (i != 1 && self.without(i).safe())
+                    || self.without(i + 1).safe()
+            }
+            Unsafety::BadDiff(i) => self.without(i).safe() || self.without(i + 1).safe(),
         }
     }
 
@@ -46,7 +45,7 @@ impl Report {
         let mut levels = self.levels.clone();
         levels.remove(i);
 
-        Report{levels}
+        Report { levels }
     }
 
     fn safe(&self) -> bool {
@@ -61,7 +60,7 @@ impl Report {
         use Unsafety::*;
 
         if self.levels[0] > self.levels[1] {
-            for (i, [a,b]) in self.levels.array_windows::<2>().enumerate() {
+            for (i, [a, b]) in self.levels.array_windows::<2>().enumerate() {
                 let abs_diff = a.abs_diff(*b);
                 if abs_diff == 0 || abs_diff > 3 {
                     return BadDiff(i);
@@ -72,7 +71,7 @@ impl Report {
                 }
             }
         } else {
-            for (i, [a,b]) in self.levels.array_windows::<2>().enumerate() {
+            for (i, [a, b]) in self.levels.array_windows::<2>().enumerate() {
                 let abs_diff = a.abs_diff(*b);
                 if abs_diff == 0 || abs_diff > 3 {
                     return BadDiff(i);
@@ -93,6 +92,21 @@ impl Report {
             .delimited_by(b' ')
             .repeat_limited(1, 8)
             .map(|levels| Self { levels })
+    }
+}
+
+impl Display for Report {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut iter = self.levels.iter();
+        if let Some(first) = iter.next() {
+            write!(f, "{first}")?;
+
+            for v in iter {
+                write!(f, " {v}")?;
+            }
+        }
+
+        Ok(())
     }
 }
 

@@ -2,13 +2,18 @@ mod and;
 mod basic;
 mod conditional;
 mod delimiter;
+mod extract;
 mod map;
 mod numbers;
+mod or;
 mod repeat;
 mod within;
 
+use crate::parser::and::AndInstead;
 use crate::parser::delimiter::DelimitedBy;
+use crate::parser::extract::Extract;
 use crate::parser::map::Map;
+use crate::parser::or::Or;
 use crate::parser::repeat::{Repeat, RepeatFold};
 use crate::parser::within::{QuotedBy, Within};
 use crate::utils::GatherTarget;
@@ -89,6 +94,22 @@ pub trait Parser<'i, T>: Sized {
     }
 
     #[inline]
+    fn and_instead<T2, P2>(self, rhs: P2) -> AndInstead<'i, T, T2, Self, P2>
+    where
+        P2: Parser<'i, T2>,
+    {
+        AndInstead(self, rhs, Default::default())
+    }
+
+    #[inline]
+    fn or<P2>(self, rhs: P2) -> Or<'i, T, Self, P2>
+    where
+        P2: Parser<'i, T>,
+    {
+        Or(self, rhs, Default::default())
+    }
+
+    #[inline]
     fn only_if<F>(self, cb: F) -> OnlyIf<'i, Self, T, F>
     where
         F: Fn(&T) -> bool,
@@ -134,8 +155,14 @@ pub trait Parser<'i, T>: Sized {
         Within::new(self, outer_parser)
     }
 
+    #[inline]
     fn delimited_by<PD, TD>(self, delim: PD) -> DelimitedBy<Self, PD, T, TD> {
         DelimitedBy::new(self, delim)
+    }
+
+    #[inline]
+    fn extract(self) -> Extract<Self, T> {
+        Extract::new(self)
     }
 
     #[inline]
