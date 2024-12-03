@@ -35,4 +35,21 @@ where
             .parse_first(input)
             .map(|(res, next)| ((self.func)(res), next))
     }
+
+    #[inline]
+    fn parse_discard(&self, input: &'i [u8]) -> Option<&'i [u8]> {
+        self.parser.parse_discard(input)
+    }
+
+    #[inline]
+    fn parse_discard_first(&self, input: &'i [u8]) -> Option<&'i [u8]> {
+        self.parser.parse_discard_first(input)
+    }
+
+    #[inline]
+    fn find_parsable(&self, input: &'i [u8]) -> Option<(TO, usize, &'i [u8])> {
+        self.parser
+            .find_parsable(input)
+            .map(|(res, index, next)| ((self.func)(res), index, next))
+    }
 }

@@ -8,6 +8,7 @@ mod numbers;
 mod or;
 mod repeat;
 mod within;
+mod rewind;
 
 use crate::parser::and::AndInstead;
 use crate::parser::delimiter::DelimitedBy;
@@ -21,6 +22,7 @@ pub use and::{And, AndDiscard};
 pub use basic::{everything, line, word};
 pub use conditional::OnlyIf;
 pub use numbers::{digit, hex_digit, int, signed_int, uint, unsigned_int};
+use crate::parser::rewind::Rewind;
 
 pub trait Parser<'i, T>: Sized {
     /// The main parsing function.
@@ -109,6 +111,7 @@ pub trait Parser<'i, T>: Sized {
         Or(self, rhs, Default::default())
     }
 
+    /// Dis
     #[inline]
     fn only_if<F>(self, cb: F) -> OnlyIf<'i, Self, T, F>
     where
@@ -117,11 +120,13 @@ pub trait Parser<'i, T>: Sized {
         OnlyIf(self, cb, Default::default())
     }
 
+    /// Map the result of the parser into a new type.
     #[inline]
     fn map<F, TO>(self, f: F) -> Map<Self, F, T, TO> {
         Map::new(self, f)
     }
 
+    /// Repeat the parsing and gather it into the target. This returns a valid value on 0 matches.
     #[inline]
     fn repeat<G>(self) -> Repeat<T, Self, G>
     where
@@ -130,6 +135,7 @@ pub trait Parser<'i, T>: Sized {
         self.repeat_limited(0, 0)
     }
 
+    /// Repeat with limitations.
     #[inline]
     fn repeat_limited<G>(self, min: usize, max: usize) -> Repeat<T, Self, G>
     where
@@ -138,6 +144,7 @@ pub trait Parser<'i, T>: Sized {
         Repeat::new(self, min, max)
     }
 
+    /// Repeat with a fold-style callback
     #[inline]
     fn repeat_fold<TO, FI, FF>(self, init_f: FI, fold_f: FF) -> RepeatFold<T, TO, Self, FI, FF>
     where
@@ -147,6 +154,7 @@ pub trait Parser<'i, T>: Sized {
         RepeatFold::new(self, init_f, fold_f)
     }
 
+    /// Parse within an outer parser, requires that the inner parser is exhausting.
     #[inline]
     fn within<PO>(self, outer_parser: PO) -> Within<Self, PO, T>
     where
@@ -155,9 +163,16 @@ pub trait Parser<'i, T>: Sized {
         Within::new(self, outer_parser)
     }
 
+    /// Returns a parser that checks for a delimiter on `parse`, but not on `parse_first`
     #[inline]
     fn delimited_by<PD, TD>(self, delim: PD) -> DelimitedBy<Self, PD, T, TD> {
         DelimitedBy::new(self, delim)
+    }
+
+    /// Returns a parser that parses, but does not advance the input. Does not allow repeating.
+    #[inline]
+    fn rewind(self) -> Rewind<Self, T> {
+        Rewind::new(self)
     }
 
     #[inline]

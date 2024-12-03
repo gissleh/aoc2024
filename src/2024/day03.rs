@@ -62,20 +62,17 @@ enum Instruction {
 
 impl Instruction {
     #[inline]
-    fn mul_parser<'i>() -> impl Parser<'i, (u32, u32)> {
-        b"mul("
-            .and_instead(uint::<u32>())
-            .and_discard(b',')
-            .and(uint::<u32>())
-            .and_discard(b')')
-    }
-
-    #[inline]
     fn parser<'i>() -> impl Parser<'i, Self> {
-        Self::mul_parser()
+        b"mul("
+            .and_instead(uint::<u32>().only_if(|v| *v > 0 && *v < 1000))
+            .and_discard(b',')
+            .and(uint::<u32>().only_if(|v| *v > 0 && *v < 1000))
+            .and_discard(b')')
             .map(|(x, y)| Instruction::Mul(x, y))
-            .or(b"don't()".map(|_| Instruction::Dont))
-            .or(b"do()".map(|_| Instruction::Do))
+            .or(b'd'.and_instead(
+                b"on't()".map(|_| Instruction::Dont)
+                .or(b"o()".map(|_| Instruction::Do))
+            ))
     }
 }
 
@@ -89,32 +86,14 @@ mod tests {
         b"xmul(2,4)&mul[3,7]!^don't()_mul(5,5)+mul(32,64](mul(11,8)undo()?mul(8,5))";
 
     #[test]
-    fn mul_parser() {
-        assert_eq!(
-            Instruction::mul_parser().parse_value(b"mul(17,16)"),
-            Some((17, 16))
-        );
-        assert_eq!(
-            Instruction::mul_parser().parse_value(b"mul(644,123)"),
-            Some((644, 123))
-        );
-        assert_eq!(Instruction::mul_parser().parse_value(b"mul(644,123"), None);
-        assert_eq!(
-            Instruction::mul_parser().parse_value(b"mul(644,123,76)"),
-            None
-        );
-        assert_eq!(Instruction::mul_parser().parse_value(b"mul(644)"), None);
-        assert_eq!(
-            Instruction::mul_parser().parse_value(b"mool(123,345)"),
-            None
-        );
-    }
-
-    #[test]
     fn instruction_parser() {
         assert_eq!(
-            Instruction::parser().parse_value(b"mul(17,16)"),
-            Some(Instruction::Mul(17, 16))
+            Instruction::parser().parse_value(b"mul(44,46)"),
+            Some(Instruction::Mul(44, 46))
+        );
+        assert_eq!(
+            Instruction::parser().parse_value(b"mul(123,4)"),
+            Some(Instruction::Mul(123, 4))
         );
         assert_eq!(
             Instruction::parser().parse_value(b"do()"),
@@ -124,9 +103,17 @@ mod tests {
             Instruction::parser().parse_value(b"don't()"),
             Some(Instruction::Dont)
         );
+        assert_eq!(Instruction::parser().parse_value(b"mul(4*"), None);
+        assert_eq!(Instruction::parser().parse_value(b"mul(6,9!"), None);
+        assert_eq!(Instruction::parser().parse_value(b"?(12,34)"), None);
+        assert_eq!(Instruction::parser().parse_value(b"mul ( 2 , 4 )"), None);
         assert_eq!(Instruction::parser().parse_value(b"do("), None);
         assert_eq!(Instruction::parser().parse_value(b"don't("), None);
         assert_eq!(Instruction::parser().parse_value(b"do_not()"), None);
+        assert_eq!(Instruction::parser().parse_value(b"mul(0,999)"), None);
+        assert_eq!(Instruction::parser().parse_value(b"mul(999,0)"), None);
+        assert_eq!(Instruction::parser().parse_value(b"mul(1000,543)"), None);
+        assert_eq!(Instruction::parser().parse_value(b"mul(64,1000)"), None);
     }
 
     #[test]
