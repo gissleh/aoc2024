@@ -1,7 +1,7 @@
-use std::marker::PhantomData;
-use crate::parser::Parser;
 use crate::parser::repeat::Repeat;
+use crate::parser::Parser;
 use crate::utils::GatherTarget;
+use std::marker::PhantomData;
 
 pub struct Rewind<P, T> {
     parser: P,
@@ -10,11 +10,17 @@ pub struct Rewind<P, T> {
 
 impl<P, T> Rewind<P, T> {
     pub fn new(parser: P) -> Self {
-        Self{parser, spooky_ghost: Default::default()}
+        Self {
+            parser,
+            spooky_ghost: Default::default(),
+        }
     }
 }
 
-impl<'i, P, T> Parser<'i, T> for Rewind<P, T> where P: Parser<'i, T> {
+impl<'i, P, T> Parser<'i, T> for Rewind<P, T>
+where
+    P: Parser<'i, T>,
+{
     fn parse(&self, input: &'i [u8]) -> Option<(T, &'i [u8])> {
         self.parser.parse_value(input).map(|res| (res, input))
     }

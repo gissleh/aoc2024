@@ -7,8 +7,8 @@ mod map;
 mod numbers;
 mod or;
 mod repeat;
-mod within;
 mod rewind;
+mod within;
 
 use crate::parser::and::AndInstead;
 use crate::parser::delimiter::DelimitedBy;
@@ -16,13 +16,13 @@ use crate::parser::extract::Extract;
 use crate::parser::map::Map;
 use crate::parser::or::Or;
 use crate::parser::repeat::{Repeat, RepeatFold};
+use crate::parser::rewind::Rewind;
 use crate::parser::within::{QuotedBy, Within};
 use crate::utils::GatherTarget;
 pub use and::{And, AndDiscard};
 pub use basic::{everything, line, word};
 pub use conditional::OnlyIf;
 pub use numbers::{digit, hex_digit, int, signed_int, uint, unsigned_int};
-use crate::parser::rewind::Rewind;
 
 pub trait Parser<'i, T>: Sized {
     /// The main parsing function.

@@ -70,8 +70,9 @@ impl Instruction {
             .and_discard(b')')
             .map(|(x, y)| Instruction::Mul(x, y))
             .or(b'd'.and_instead(
-                b"on't()".map(|_| Instruction::Dont)
-                .or(b"o()".map(|_| Instruction::Do))
+                b"on't()"
+                    .map(|_| Instruction::Dont)
+                    .or(b"o()".map(|_| Instruction::Do)),
             ))
     }
 }

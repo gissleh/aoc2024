@@ -118,7 +118,7 @@ where
 impl<C, S, T> Grid<C, S, T>
 where
     C: GridCoordinate,
-    T: Default,
+    T: Default + Clone,
     S: AsRef<[T]>,
 {
     pub fn with_storage(size: C, storage: S) -> Self {
