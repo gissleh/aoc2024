@@ -86,17 +86,7 @@ struct VersionUpdate(ArrayVec<u8, 24>);
 
 impl VersionUpdate {
     fn is_sorted(&self, ordering: &PageOrdering) -> bool {
-        for i in 0..self.0.len() {
-            let a = self.0[i];
-            for j in (i + 1)..self.0.len() {
-                let b = self.0[j];
-                if ordering.is_before(b, a) {
-                    return false;
-                }
-            }
-        }
-
-        true
+        self.0.is_sorted_by(|a, b| ordering.is_before(*a, *b))
     }
 
     fn sorted(&self, ordering: &PageOrdering) -> Self {
@@ -105,10 +95,8 @@ impl VersionUpdate {
         new_list.sort_by(|a, b| {
             if ordering.is_before(*a, *b) {
                 Ordering::Less
-            } else if ordering.is_before(*b, *a) {
-                Ordering::Greater
             } else {
-                Ordering::Equal
+                Ordering::Greater
             }
         });
 
