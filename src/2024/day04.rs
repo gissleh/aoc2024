@@ -1,10 +1,16 @@
 use common::grid::Grid;
 use common::runner::Runner;
+use common::search::{dfs, NoSeenSpace, Order};
 
 pub fn main(r: &mut Runner, input: &[u8]) {
-    let res = r.prep("Parse", || XmasGrid::parse(input));
-    r.part("Part 1", || part_1(&res));
-    r.part("Part 2", || part_2(&res));
+    let xmas_grid = r.prep("Parse", || XmasGrid::parse(input));
+    r.info("Grid Width", &xmas_grid.grid.size().0);
+    r.info("Grid Height", &xmas_grid.grid.size().1);
+    r.part("Part 1", || part_1(&xmas_grid));
+    r.set_tail("Parse");
+    r.part("Part 1 (DFS)", || part_1_dfs(&xmas_grid));
+    r.part("Part 2", || part_2(&xmas_grid));
+    r.connect("Part 1", "Part 2");
 }
 
 fn part_1(grid: &XmasGrid) -> u32 {
@@ -20,6 +26,48 @@ fn part_1(grid: &XmasGrid) -> u32 {
     }
 
     count
+}
+
+fn part_1_dfs(grid: &XmasGrid) -> u32 {
+    const WORD: &[u8] = b"XMAS";
+
+    let mut search = dfs().with_seen_space(NoSeenSpace);
+    let (width, height) = grid.size();
+    for y in 0..height{
+        for x in 0..width {
+            if grid.grid[(x, y)] != b'X' {
+                continue;
+            }
+
+            for dir in 0..8u8 {
+                let next_pos = travel((x, y), dir, 1);
+                if let Some(c) = grid.grid.cell(&next_pos) {
+                    search.push((*c, next_pos, dir, 1usize));
+                }
+            }
+        }
+    }
+
+    let mut total = 0;
+    while let Some(_) = search.find(|s, (c, (x, y), dir, index)| {
+        if c == WORD[index] {
+            if index == 3 {
+                Some(())
+            } else {
+                let next_pos = travel((x, y), dir, 1);
+                if let Some(c) = grid.grid.cell(&next_pos) {
+                    s.push((*c, next_pos, dir, index + 1));
+                }
+                None
+            }
+        } else {
+            None
+        }
+    }) {
+        total += 1;
+    }
+
+    total
 }
 
 fn part_2(grid: &XmasGrid) -> u32 {

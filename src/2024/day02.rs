@@ -6,6 +6,7 @@ use std::fmt::{Display, Formatter};
 
 pub fn main(r: &mut Runner, input: &[u8]) {
     let reports = r.prep("Parse", || input_parser().parse_value(input).unwrap());
+    r.info("Reports", &reports.len());
     r.part("Part 1", || part_1(&reports));
     r.part("Part 2", || part_2(&reports));
 }

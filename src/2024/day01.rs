@@ -4,6 +4,7 @@ use common::runner::Runner;
 
 pub fn main(r: &mut Runner, input: &[u8]) {
     let (left_list, right_list) = r.prep("Parse + Sort", || parse_and_sort(&input));
+    r.info("List Items", &left_list.len());
     r.part("Part 1", || part_one(&left_list, &right_list));
     r.part("Part 2 (Iterators)", || part_two(&left_list, &right_list));
     r.set_tail("Part 1");

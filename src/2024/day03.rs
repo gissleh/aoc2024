@@ -3,6 +3,7 @@ use common::runner::Runner;
 
 pub fn main(r: &mut Runner, input: &[u8]) {
     let res = r.prep("Parse", || parse(input));
+    r.info("Instructions Found", &res.len());
     r.part("Part 1", || part_1(&res));
     r.part("Part 2", || part_2(&res));
 }

@@ -13,7 +13,7 @@ use order::dijkstra::{AStarBinaryHeap, DijkstraBinaryHeap};
 use crate::search::attributes::Heuristic;
 pub use attributes::{Cost, Key};
 pub use order::Order;
-pub use seen::SeenSpace;
+pub use seen::{SeenSpace, NoSeenSpace};
 
 pub struct Search<S, SEEN, ORDER>
 where

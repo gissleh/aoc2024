@@ -248,3 +248,17 @@ where
         }
     }
 }
+
+pub struct NoSeenSpace;
+
+impl<S> SeenSpace<S> for NoSeenSpace {
+    fn reset(&mut self) {}
+
+    fn has_seen(&self, _: &S) -> bool {
+        false
+    }
+
+    fn try_mark_seen(&mut self, _: S) -> bool {
+        true
+    }
+}

@@ -28,6 +28,7 @@ pub fn run(year: u16, day: u16, cb: fn(&mut Runner, input: &[u8])) {
 
 pub struct Runner {
     graph: Graph<Run, (), 16>,
+    info: Vec<(String, String)>,
     tail: usize,
     day: u16,
     op: String,
@@ -39,6 +40,7 @@ impl Runner {
             day,
             op,
             graph: Graph::<Run, (), 16>::new(),
+            info: Vec::new(),
             tail: usize::MAX,
         }
     }
@@ -78,6 +80,13 @@ impl Runner {
 
                     println!("  {}: {}", run.name, run.value_str);
                 }
+                if !self.info.is_empty() {
+                    println!();
+                    println!("Info:");
+                    for (key, value) in self.info.iter() {
+                        println!("  {}: {}", key, value);
+                    }
+                }
                 println!();
                 println!("Times:");
                 for run in self.graph.nodes().iter() {
@@ -110,6 +119,10 @@ impl Runner {
         let (v, index) = self.run(name, f);
         self.graph.node_mut(index).value_str = format!("{}", v).to_string();
         v
+    }
+
+    pub fn info<T>(&mut self, name: &str, value: &T) where T: Display {
+        self.info.push((name.to_string(), format!("{value}")));
     }
 
     fn run<T, F>(&mut self, name: &str, f: F) -> (T, usize)
