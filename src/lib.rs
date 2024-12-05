@@ -8,5 +8,6 @@ pub mod utils;
 
 #[macro_use]
 pub mod search;
+pub mod constants;
 pub mod point;
 pub mod runner;

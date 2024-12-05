@@ -121,7 +121,10 @@ impl Runner {
         v
     }
 
-    pub fn info<T>(&mut self, name: &str, value: &T) where T: Display {
+    pub fn info<T>(&mut self, name: &str, value: &T)
+    where
+        T: Display,
+    {
         self.info.push((name.to_string(), format!("{value}")));
     }
 
@@ -301,6 +304,7 @@ pub fn load_input(year: u16, day_number: u16) -> Vec<u8> {
     }
 }
 
+#[derive(Debug, Eq, PartialEq)]
 pub struct BothParts<T1, T2>(pub T1, pub T2)
 where
     T1: Display,

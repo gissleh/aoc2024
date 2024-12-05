@@ -33,7 +33,7 @@ fn part_1_dfs(grid: &XmasGrid) -> u32 {
 
     let mut search = dfs().with_seen_space(NoSeenSpace);
     let (width, height) = grid.size();
-    for y in 0..height{
+    for y in 0..height {
         for x in 0..width {
             if grid.grid[(x, y)] != b'X' {
                 continue;
