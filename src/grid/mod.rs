@@ -216,7 +216,7 @@ macro_rules! impl_coord {
 
             #[inline]
             fn area(&self) -> usize {
-                (self.0 * self.1) as usize
+                (self.0 as usize * self.1 as usize)
             }
 
             #[inline]
@@ -226,7 +226,7 @@ macro_rules! impl_coord {
 
             #[inline]
             fn index(&self, size: &Self) -> usize {
-                ((self.1 * size.0) + self.0) as usize
+                ((self.1 as usize * size.0 as usize) + self.0 as usize)
             }
 
             #[inline]
@@ -258,7 +258,9 @@ macro_rules! impl_coord {
 
             #[inline]
             fn index(&self, size: &Self) -> usize {
-                ((self.2 * (size.0 * size.1)) + (self.1 * size.0) + self.0) as usize
+                ((self.2 as usize * (size.0 as usize * size.1 as usize))
+                    + (self.1 as usize * size.0 as usize)
+                    + self.0 as usize) as usize
             }
 
             #[inline]
@@ -295,11 +297,14 @@ macro_rules! impl_coord {
 
             #[inline]
             fn index(&self, size: &Self) -> usize {
-                let w = size.0;
-                let wh = w * size.1;
-                let whd = wh * size.2;
+                let w = size.0 as usize;
+                let wh = w * size.1 as usize;
+                let whd = wh * size.2 as usize;
 
-                ((self.3 * whd) + (self.2 * wh) + (self.1 * size.0) + self.0) as usize
+                ((self.3 as usize * whd)
+                    + (self.2 as usize * wh)
+                    + (self.1 as usize * size.0 as usize)
+                    + self.0 as usize) as usize
             }
 
             #[inline]
