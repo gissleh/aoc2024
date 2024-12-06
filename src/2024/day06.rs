@@ -11,7 +11,7 @@ pub fn main(r: &mut Runner, input: &[u8]) {
 }
 
 fn both_parts(grid: &Grid<(u16, u16), Vec<u8>, u8>, start_pos: (u16, u16)) -> BothParts<u32, u32> {
-    let mut seen = [0u8; 256*256];
+    let mut seen = [0u8; 256 * 256];
     let mut pos = start_pos;
     let mut dir = Direction::Up;
     let mut count = 0;
@@ -31,14 +31,9 @@ fn both_parts(grid: &Grid<(u16, u16), Vec<u8>, u8>, start_pos: (u16, u16)) -> Bo
 
         match cell {
             b'.' => {
-                let index = pos.index(size);
                 let next_index = next_pos.index(size);
 
-                if seen[index] & dir.turn_right().to_bits() == 99 {
-                    #[cfg(test)]
-                    println!("Obstacle at {:?} going {:?} (Cross)", dir.next_pos(&pos), dir);
-                    obstacles += 1;
-                } else if seen[next_index] == 0 {
+                if seen[next_index] == 0 {
                     let obstacle_pos = next_pos;
                     if grid.cell(&obstacle_pos) != Some(&b'#') {
                         let mut seen2 = seen;
@@ -53,11 +48,14 @@ fn both_parts(grid: &Grid<(u16, u16), Vec<u8>, u8>, start_pos: (u16, u16)) -> Bo
                             match cell {
                                 b'.' if next_pos2 == obstacle_pos => {
                                     dir2 = dir2.turn_right();
-                                },
+                                }
                                 b'.' => {
                                     if seen2[next_pos2.index(&size)] & dir2.to_bits() != 0 {
                                         #[cfg(test)]
-                                        println!("Obstacle at {:?} going {:?} (New Loop)",obstacle_pos, dir);
+                                        println!(
+                                            "Obstacle at {:?} going {:?} (New Loop)",
+                                            obstacle_pos, dir
+                                        );
 
                                         obstacles += 1;
                                         break 'pos2_loop;
@@ -68,7 +66,7 @@ fn both_parts(grid: &Grid<(u16, u16), Vec<u8>, u8>, start_pos: (u16, u16)) -> Bo
                                 b'#' => {
                                     dir2 = dir2.turn_right();
                                 }
-                                _ => unreachable!()
+                                _ => unreachable!(),
                             }
 
                             next_pos2 = dir2.next_pos(&pos2);
@@ -107,7 +105,8 @@ fn parse_grid(input: &[u8]) -> (Grid<(u16, u16), Vec<u8>, u8>, (u16, u16)) {
         .collect::<Vec<_>>();
 
     let mut grid = Grid::new_with_default((width as u16, height as u16), vec, 0);
-    let start = grid.iter()
+    let start = grid
+        .iter()
         .find(|(_, v)| **v == b'^')
         .map(|(pos, _)| pos)
         .unwrap();
@@ -119,7 +118,10 @@ fn parse_grid(input: &[u8]) -> (Grid<(u16, u16), Vec<u8>, u8>, (u16, u16)) {
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 enum Direction {
-    Left, Up, Right, Down
+    Left,
+    Up,
+    Right,
+    Down,
 }
 
 impl Direction {
@@ -153,8 +155,8 @@ impl Direction {
 
 #[cfg(test)]
 mod tests {
+    use crate::day06::{both_parts, parse_grid};
     use common::runner::BothParts;
-    use crate::day06::{parse_grid, both_parts};
 
     const EXAMPLE: &[u8] = b"....#.....
 .........#
@@ -174,7 +176,6 @@ mod tests {
 ..^..
 ..#..
 ";
-
 
     #[test]
     fn part_1_works_on_example() {
