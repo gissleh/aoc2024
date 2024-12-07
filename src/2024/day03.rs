@@ -22,7 +22,7 @@ fn part_1(input: &[Instruction]) -> u32 {
     for inst in input.iter() {
         match inst {
             Instruction::Mul(a, b) => {
-                sum += *a * *b;
+                sum += *a as u32 * *b as u32;
             }
             _ => {}
         }
@@ -45,7 +45,7 @@ fn part_2(input: &[Instruction]) -> u32 {
             }
             Instruction::Mul(a, b) => {
                 if enabled {
-                    sum += *a * *b;
+                    sum += *a as u32 * *b as u32;
                 }
             }
         }

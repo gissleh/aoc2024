@@ -126,7 +126,6 @@ pub trait Parser<'i, T>: Sized {
         Map::new(self, f)
     }
 
-    /// Repeat the parsing and gather it into the target. This returns a valid value on 0 matches.
     #[inline]
     fn repeat<G>(self) -> Repeat<T, Self, G>
     where
