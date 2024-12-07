@@ -5,6 +5,8 @@ use std::cmp::Ordering;
 use std::fmt::{Display, Formatter};
 use std::fs::{create_dir_all, File, OpenOptions};
 use std::io::{Read, Write};
+use std::iter::Sum;
+use std::ops::Add;
 use std::time::Instant;
 
 pub fn run(year: u16, day: u16, cb: fn(&mut Runner, input: &[u8])) {
@@ -304,11 +306,25 @@ pub fn load_input(year: u16, day_number: u16) -> Vec<u8> {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Default)]
 pub struct BothParts<T1, T2>(pub T1, pub T2)
 where
     T1: Display,
     T2: Display;
+
+impl<T1, T2> Sum<BothParts<T1, T2>> for BothParts<T1, T2>
+where
+    T1: Display,
+    T2: Display,
+    T1: Add<Output = T1> + Default + Copy,
+    T2: Add<Output = T2> + Default + Copy,
+{
+    fn sum<I: Iterator<Item = BothParts<T1, T2>>>(iter: I) -> Self {
+        iter.fold(Self(Default::default(), Default::default()), |a, b| {
+            BothParts(a.0 + b.0, a.1 + b.1)
+        })
+    }
+}
 
 impl<T1, T2> Display for BothParts<T1, T2>
 where
