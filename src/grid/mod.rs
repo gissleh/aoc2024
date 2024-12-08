@@ -330,12 +330,170 @@ macro_rules! impl_coord {
     };
 }
 
+macro_rules! impl_coord_signed {
+    ($int: tt) => {
+        impl GridCoordinate for $int {
+            #[inline]
+            fn zero() -> Self {
+                0
+            }
+
+            #[inline]
+            fn area(&self) -> usize {
+                *self as usize
+            }
+
+            #[inline]
+            fn in_bounds(&self, size: &Self) -> bool {
+                *self >= 0 && *self < *size
+            }
+
+            #[inline]
+            fn index(&self, size: &Self) -> usize {
+                (*self % *size) as usize
+            }
+
+            #[inline]
+            fn next(&self, size: &Self) -> Self {
+                (*self + 1) % *size
+            }
+        }
+
+        impl GridCoordinate for ($int, $int) {
+            #[inline]
+            fn zero() -> Self {
+                (0, 0)
+            }
+
+            #[inline]
+            fn area(&self) -> usize {
+                (self.0 as usize * self.1 as usize)
+            }
+
+            #[inline]
+            fn in_bounds(&self, size: &Self) -> bool {
+                self.0 >= 0 && self.0 < size.0 && self.1 >= 0 && self.1 < size.1
+            }
+
+            #[inline]
+            fn index(&self, size: &Self) -> usize {
+                ((self.1 as usize * size.0 as usize) + self.0 as usize)
+            }
+
+            #[inline]
+            fn next(&self, size: &Self) -> Self {
+                let nx = self.0 + 1;
+                if nx == size.0 {
+                    (0, self.1 + 1)
+                } else {
+                    (nx, self.1)
+                }
+            }
+        }
+
+        impl GridCoordinate for ($int, $int, $int) {
+            #[inline]
+            fn zero() -> Self {
+                (0, 0, 0)
+            }
+
+            #[inline]
+            fn area(&self) -> usize {
+                (self.0 * self.1 * self.2) as usize
+            }
+
+            #[inline]
+            fn in_bounds(&self, size: &Self) -> bool {
+                self.0 >= 0 && self.0 < size.0 && self.1 >= 0 && self.1 < size.1 && self.2 >= 0 && self.2 < size.2
+            }
+
+            #[inline]
+            fn index(&self, size: &Self) -> usize {
+                ((self.2 as usize * (size.0 as usize * size.1 as usize))
+                    + (self.1 as usize * size.0 as usize)
+                    + self.0 as usize) as usize
+            }
+
+            #[inline]
+            fn next(&self, size: &Self) -> Self {
+                let nx = self.0 + 1;
+                if nx == size.0 {
+                    let ny = self.1 + 1;
+                    if ny == size.1 {
+                        (0, 0, self.2 + 1)
+                    } else {
+                        (0, ny, self.2)
+                    }
+                } else {
+                    (nx, self.1, self.2)
+                }
+            }
+        }
+
+        impl GridCoordinate for ($int, $int, $int, $int) {
+            #[inline]
+            fn zero() -> Self {
+                (0, 0, 0, 0)
+            }
+
+            #[inline]
+            fn area(&self) -> usize {
+                (self.0 * self.1 * self.2 * self.3) as usize
+            }
+
+            #[inline]
+            fn in_bounds(&self, size: &Self) -> bool {
+                self.0 >= 0 && self.0 < size.0 && self.1 >= 0 && self.1 < size.1 && self.2 >= 0 && self.2 < size.2 && self.3 >= 0 && self.3 < size.3
+            }
+
+            #[inline]
+            fn index(&self, size: &Self) -> usize {
+                let w = size.0 as usize;
+                let wh = w * size.1 as usize;
+                let whd = wh * size.2 as usize;
+
+                ((self.3 as usize * whd)
+                    + (self.2 as usize * wh)
+                    + (self.1 as usize * size.0 as usize)
+                    + self.0 as usize) as usize
+            }
+
+            #[inline]
+            fn next(&self, size: &Self) -> Self {
+                let nx = self.0 + 1;
+                if nx == size.0 {
+                    let ny = self.1 + 1;
+                    if ny == size.1 {
+                        let nz = self.2 + 1;
+                        if nz == size.2 {
+                            (0, 0, 0, self.3 + 1)
+                        } else {
+                            (0, 0, nz, self.3)
+                        }
+                    } else {
+                        (0, ny, self.2, self.3)
+                    }
+                } else {
+                    (nx, self.1, self.2, self.3)
+                }
+            }
+        }
+    };
+}
+
+
 impl_coord!(u8);
+impl_coord_signed!(i8);
 impl_coord!(u16);
+impl_coord_signed!(i16);
 impl_coord!(u32);
+impl_coord_signed!(i32);
 impl_coord!(u64);
+impl_coord_signed!(i64);
 impl_coord!(u128);
+impl_coord_signed!(i128);
 impl_coord!(usize);
+impl_coord_signed!(isize);
 
 #[cfg(test)]
 mod tests {

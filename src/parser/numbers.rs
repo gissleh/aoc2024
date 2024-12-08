@@ -13,6 +13,11 @@ pub fn digit<'i>() -> impl Parser<'i, u8> + Copy + Clone {
 }
 
 #[inline]
+pub fn base62_digit<'i>() -> impl Parser<'i, u8> + Copy + Clone {
+    Base62Digit
+}
+
+#[inline]
 pub fn unsigned_int<'i, T, DP>(radix: T, dp: DP) -> UnsignedInt<'i, T, DP>
 where
     T: From<u8> + Copy + AddAssign<T> + MulAssign<T> + 'i,
@@ -232,6 +237,43 @@ impl<'i> Parser<'i, u8> for Base10Digit {
     #[inline]
     fn can_parse(&self, input: &'i [u8]) -> bool {
         !input.is_empty() && (b'0'..=b'9').contains(&input[0])
+    }
+}
+
+#[derive(Copy, Clone)]
+struct Base62Digit;
+
+impl<'i> Parser<'i, u8> for Base62Digit {
+    #[inline]
+    fn parse(&self, input: &'i [u8]) -> Option<(u8, &'i [u8])> {
+        let d = *input.first()?;
+        match d {
+            b'0'..=b'9' => Some((d - b'0', &input[1..])),
+            b'a'..=b'z' => Some(((d - b'a') + 10, &input[1..])),
+            b'A'..=b'Z' => Some(((d - b'A') + 36, &input[1..])),
+            _ => None,
+        }
+    }
+
+    #[inline]
+    fn parse_discard(&self, input: &'i [u8]) -> Option<&'i [u8]> {
+        if self.can_parse(input) {
+            Some(&input[1..])
+        } else {
+            None
+        }
+    }
+
+    #[inline]
+    fn can_parse(&self, input: &'i [u8]) -> bool {
+        if let Some(c) = input.first() {
+            match c {
+                b'0'..=b'9' | b'a'..=b'z' | b'A'..=b'Z' => true,
+                _ => false,
+            }
+        } else {
+            false
+        }
     }
 }
 

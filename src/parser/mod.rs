@@ -22,7 +22,7 @@ use crate::utils::GatherTarget;
 pub use and::{And, AndDiscard};
 pub use basic::{everything, line, word};
 pub use conditional::OnlyIf;
-pub use numbers::{digit, hex_digit, int, signed_int, uint, unsigned_int};
+pub use numbers::{base62_digit, digit, hex_digit, int, signed_int, uint, unsigned_int};
 
 pub trait Parser<'i, T>: Sized {
     /// The main parsing function.
