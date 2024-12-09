@@ -24,6 +24,7 @@ pub fn main(r: &mut Runner, input: &[u8]) {
     r.part("Part 2 (Segment Map)", || part_2_segments(&file));
     r.set_tail("Part 1 (Segment Map)");
     r.part("Part 2 (Segment Map, Hydra)", || part_2_segments_hydra(&file));
+    r.info("Segment Map Size", &file.len());
 }
 
 fn part_1(uncompacted_disk: &[u16]) -> u64 {
@@ -205,9 +206,13 @@ fn parse_segments(input: &[u8]) -> Vec<DiskSegment> {
 
         let size = ch - b'0';
         if is_free {
-            res.push(DiskSegment::Free(size));
+            if size > 0 {
+                res.push(DiskSegment::Free(size));
+            }
         } else {
-            res.push(DiskSegment::File(current_id, size));
+            if size > 0 {
+                res.push(DiskSegment::File(current_id, size));
+            }
             current_id += 1;
         }
 
