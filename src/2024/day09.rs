@@ -20,6 +20,8 @@ pub fn main(r: &mut Runner, input: &[u8]) {
     let file = r.prep("Parse (Segment Map)", || parse_segments(input));
     r.part("Part 1 (Segment Map)", || part_1_segments(&file));
     r.part("Part 2 (Segment Map)", || part_2_segments(&file));
+    r.set_tail("Part 1 (Segment Map)");
+    r.part("Part 2 (Segment Map, Hydra)", || part_2_segments_hydra(&file));
 }
 
 fn part_1(uncompacted_disk: &[u16]) -> u64 {
@@ -230,6 +232,41 @@ fn part_2_segments(uncompacted_disk: &[crate::day09::DiskSegment]) -> u64 {
                         break;
                     }
                 }
+            }
+        }
+
+        tail -= 1;
+    }
+
+    DiskSegment::checksum(&compacted_disk)
+}
+
+fn part_2_segments_hydra(uncompacted_disk: &[crate::day09::DiskSegment]) -> u64 {
+    let mut compacted_disk = uncompacted_disk.to_vec();
+    let mut tail = compacted_disk.len() - 1;
+    let mut heads = [0usize; 10];
+
+    while tail > 0 {
+        if let DiskSegment::File(file_id, file_len) = compacted_disk[tail] {
+            let head = &mut heads[file_len as usize];
+
+            while *head < tail {
+                if let DiskSegment::Free(free_len) = compacted_disk[*head] {
+                    if free_len == file_len {
+                        compacted_disk[*head] = DiskSegment::File(file_id, file_len);
+                        compacted_disk[tail] = DiskSegment::Free(file_len);
+                        break;
+                    } else if free_len > file_len {
+                        compacted_disk[*head] = DiskSegment::File(file_id, file_len);
+                        compacted_disk[tail] = DiskSegment::Free(file_len);
+                        compacted_disk.insert(*head + 1, DiskSegment::Free(free_len - file_len));
+
+                        tail += 1;
+                        break;
+                    }
+                }
+
+                *head += 1;
             }
         }
 
