@@ -6,6 +6,8 @@ pub fn main(r: &mut Runner, input: &[u8]) {
     let file = r.prep("Parse", || parse_file(input));
     r.part("Part 1", || part_1(&file));
     r.part("Part 2", || part_2(&file));
+    r.set_tail("Part 1");
+    r.part("Part 2 (Hydra)", || part_2_hydra(&file));
     r.info("Disk Size", &file.len());
     r.info(
         "Highest ID",
@@ -100,6 +102,64 @@ fn part_2(uncompacted_disk: &[u16]) -> u64 {
             tail -= file_size;
         } else {
             head += head_size;
+        }
+    }
+
+    compacted_disk
+        .iter()
+        .enumerate()
+        .filter(|(_, id)| **id != FREE_SPACE)
+        .map(|(position, id)| position as u64 * *id as u64)
+        .sum()
+}
+
+fn part_2_hydra(uncompacted_disk: &[u16]) -> u64 {
+    let mut compacted_disk = uncompacted_disk.to_vec();
+
+    let mut hydra = [0usize; 10];
+    let mut tail = compacted_disk.len() - 1;
+
+    while tail > 0 {
+        while compacted_disk[tail] == FREE_SPACE {
+            tail -= 1;
+        }
+        let file_id = compacted_disk[tail];
+        let file_size = compacted_disk[..=tail]
+            .iter()
+            .rev()
+            .take_while(|v| **v == file_id)
+            .count();
+
+        let head = &mut hydra[file_size];
+        while compacted_disk[*head] != FREE_SPACE {
+            *head += 1;
+        }
+        if *head >= tail {
+            if tail < file_size {
+                break
+            }
+            tail -= file_size;
+            continue;
+        }
+
+        let head_size = compacted_disk[*head..]
+            .iter()
+            .take_while(|v| **v == FREE_SPACE)
+            .count();
+
+        if head_size >= file_size {
+            #[cfg(test)]
+            println!("{file_id} moved {file_size} from {tail} to {head}");
+
+            for i in 0..file_size {
+                compacted_disk[*head] = file_id;
+                compacted_disk[tail - i] = FREE_SPACE;
+                *head += 1;
+            }
+
+            tail -= file_size;
+        } else {
+            *head += head_size;
         }
     }
 
@@ -244,11 +304,11 @@ fn part_2_segments(uncompacted_disk: &[crate::day09::DiskSegment]) -> u64 {
 fn part_2_segments_hydra(uncompacted_disk: &[crate::day09::DiskSegment]) -> u64 {
     let mut compacted_disk = uncompacted_disk.to_vec();
     let mut tail = compacted_disk.len() - 1;
-    let mut heads = [0usize; 10];
+    let mut hydra = [0usize; 10];
 
     while tail > 0 {
         if let DiskSegment::File(file_id, file_len) = compacted_disk[tail] {
-            let head = &mut heads[file_len as usize];
+            let head = &mut hydra[file_len as usize];
 
             while *head < tail {
                 if let DiskSegment::Free(free_len) = compacted_disk[*head] {
@@ -311,6 +371,11 @@ mod tests {
     #[test]
     fn part_2_works_on_examples() {
         assert_eq!(part_2(&parse_file(LONG_EXAMPLE)), 2858);
+    }
+
+    #[test]
+    fn part_2_hydra_works_on_examples() {
+        assert_eq!(part_2_hydra(&parse_file(LONG_EXAMPLE)), 2858);
     }
 
     #[test]
