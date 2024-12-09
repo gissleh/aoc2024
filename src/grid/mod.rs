@@ -404,7 +404,12 @@ macro_rules! impl_coord_signed {
 
             #[inline]
             fn in_bounds(&self, size: &Self) -> bool {
-                self.0 >= 0 && self.0 < size.0 && self.1 >= 0 && self.1 < size.1 && self.2 >= 0 && self.2 < size.2
+                self.0 >= 0
+                    && self.0 < size.0
+                    && self.1 >= 0
+                    && self.1 < size.1
+                    && self.2 >= 0
+                    && self.2 < size.2
             }
 
             #[inline]
@@ -443,7 +448,14 @@ macro_rules! impl_coord_signed {
 
             #[inline]
             fn in_bounds(&self, size: &Self) -> bool {
-                self.0 >= 0 && self.0 < size.0 && self.1 >= 0 && self.1 < size.1 && self.2 >= 0 && self.2 < size.2 && self.3 >= 0 && self.3 < size.3
+                self.0 >= 0
+                    && self.0 < size.0
+                    && self.1 >= 0
+                    && self.1 < size.1
+                    && self.2 >= 0
+                    && self.2 < size.2
+                    && self.3 >= 0
+                    && self.3 < size.3
             }
 
             #[inline]
@@ -480,7 +492,6 @@ macro_rules! impl_coord_signed {
         }
     };
 }
-
 
 impl_coord!(u8);
 impl_coord_signed!(i8);

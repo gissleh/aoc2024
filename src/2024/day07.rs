@@ -3,8 +3,8 @@ use common::parser;
 use common::parser::Parser;
 use common::runner::{BothParts, Runner};
 use rayon::prelude::*;
-use std::fmt::{Display, Formatter};
 use rustc_hash::FxHashSet;
+use std::fmt::{Display, Formatter};
 
 pub fn main(r: &mut Runner, input: &[u8]) {
     let equations = r.prep("Parse", || {
@@ -15,9 +15,13 @@ pub fn main(r: &mut Runner, input: &[u8]) {
     r.info("Equations", &equations.len());
 
     r.set_tail("Parse");
-    r.part("Both Parts (Recursive)", || both_parts_recursive(&equations));
+    r.part("Both Parts (Recursive)", || {
+        both_parts_recursive(&equations)
+    });
     r.set_tail("Parse");
-    r.part("Both Parts (DP)", || both_parts_recursive_cached(&equations));
+    r.part("Both Parts (DP)", || {
+        both_parts_recursive_cached(&equations)
+    });
 }
 
 fn both_parts(equations: &[Equation]) -> BothParts<u64, u64> {
@@ -59,7 +63,6 @@ fn both_parts_recursive(equations: &[Equation]) -> BothParts<u64, u64> {
         )
         .sum()
 }
-
 
 fn both_parts_recursive_cached(equations: &[Equation]) -> BothParts<u64, u64> {
     equations
@@ -119,11 +122,21 @@ impl Equation {
     }
 
     fn check_p1_rec_cached(&self) -> bool {
-        self.check_rec_step_cached(self.operands[0], 1, false, &mut FxHashSet::with_capacity_and_hasher(128, Default::default()))
+        self.check_rec_step_cached(
+            self.operands[0],
+            1,
+            false,
+            &mut FxHashSet::with_capacity_and_hasher(128, Default::default()),
+        )
     }
 
     fn check_p2_rec_cached(&self) -> bool {
-        self.check_rec_step_cached(self.operands[0], 1, true, &mut FxHashSet::with_capacity_and_hasher(128, Default::default()))
+        self.check_rec_step_cached(
+            self.operands[0],
+            1,
+            true,
+            &mut FxHashSet::with_capacity_and_hasher(128, Default::default()),
+        )
     }
 
     fn check_rec_step(&self, curr: u64, i: usize, use_concat: bool) -> bool {
@@ -141,10 +154,17 @@ impl Equation {
             }
         }
 
-        self.check_rec_step(curr * op, i + 1, use_concat) || self.check_rec_step(curr + op, i + 1, use_concat)
+        self.check_rec_step(curr * op, i + 1, use_concat)
+            || self.check_rec_step(curr + op, i + 1, use_concat)
     }
 
-    fn check_rec_step_cached(&self, curr: u64, i: usize, use_concat: bool, cache: &mut FxHashSet<(u64, usize)>) -> bool {
+    fn check_rec_step_cached(
+        &self,
+        curr: u64,
+        i: usize,
+        use_concat: bool,
+        cache: &mut FxHashSet<(u64, usize)>,
+    ) -> bool {
         if i == self.operands.len() {
             return curr == self.expected;
         } else if curr > self.expected {
@@ -161,14 +181,15 @@ impl Equation {
             false
         };
 
-        let res = concat_result || self.check_rec_step_cached(curr * op, i + 1, use_concat, cache) || self.check_rec_step_cached(curr + op, i + 1, use_concat, cache);
+        let res = concat_result
+            || self.check_rec_step_cached(curr * op, i + 1, use_concat, cache)
+            || self.check_rec_step_cached(curr + op, i + 1, use_concat, cache);
         if !res {
             cache.insert((curr, i));
         }
 
         res
     }
-
 
     fn check_p2(&self) -> bool {
         for n in 0..3u32.pow(self.operands.len() as u32 - 1) {
@@ -253,7 +274,7 @@ impl Operator {
         match self {
             Operator::Add => a + b,
             Operator::Mul => a * b,
-            Operator::Cat => concat_numbers(a, b)
+            Operator::Cat => concat_numbers(a, b),
         }
     }
 

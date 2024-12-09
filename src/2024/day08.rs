@@ -1,7 +1,7 @@
 use arrayvec::ArrayVec;
-use rustc_hash::FxHashSet;
-use common::runner::Runner;
 use common::grid::GridCoordinate;
+use common::runner::Runner;
+use rustc_hash::FxHashSet;
 
 pub fn main(r: &mut Runner, input: &[u8]) {
     let antenna_amp = r.prep("Parse", || AntennaMap::parse(input));
@@ -9,8 +9,18 @@ pub fn main(r: &mut Runner, input: &[u8]) {
     r.part("Part 1", || part_1(&antenna_amp));
     r.part("Part 2", || part_2(&antenna_amp));
 
-    r.info("Antennas", &antenna_amp.positions_by_key.iter().map(|a| a.len()).sum::<usize>());
-    r.info("0 Antennas", &format!("{:?}", antenna_amp.positions_by_key[0]));
+    r.info(
+        "Antennas",
+        &antenna_amp
+            .positions_by_key
+            .iter()
+            .map(|a| a.len())
+            .sum::<usize>(),
+    );
+    r.info(
+        "0 Antennas",
+        &format!("{:?}", antenna_amp.positions_by_key[0]),
+    );
 }
 
 fn part_1(antenna_map: &AntennaMap) -> usize {
@@ -20,7 +30,7 @@ fn part_1(antenna_map: &AntennaMap) -> usize {
             let a = antennas[i];
             for j in 0..antennas.len() {
                 if i == j {
-                    continue
+                    continue;
                 }
                 let b = antennas[j];
 
@@ -45,7 +55,7 @@ fn part_2(antenna_map: &AntennaMap) -> usize {
             let a = antennas[i];
             for j in 0..antennas.len() {
                 if i == j {
-                    continue
+                    continue;
                 }
                 let b = antennas[j];
 
@@ -78,19 +88,27 @@ impl AntennaMap {
         let size = (width as i16, height as i16);
         let mut curr = (0, 0);
 
-        let mut res = Self{
+        let mut res = Self {
             size,
-            positions_by_key: std::array::from_fn(|_| ArrayVec::new_const())
+            positions_by_key: std::array::from_fn(|_| ArrayVec::new_const()),
         };
 
         for c in input.iter() {
             match *c {
-                b'\n' => { continue }
-                b'.' => { }
-                b'0'..=b'9' => { res.positions_by_key[(*c - b'0') as usize].push(curr); }
-                b'a'..=b'z' => { res.positions_by_key[((*c - b'a') + 10) as usize].push(curr); }
-                b'A'..=b'Z' => { res.positions_by_key[((*c - b'A') + 36) as usize].push(curr); }
-                _ => { unreachable!(); }
+                b'\n' => continue,
+                b'.' => {}
+                b'0'..=b'9' => {
+                    res.positions_by_key[(*c - b'0') as usize].push(curr);
+                }
+                b'a'..=b'z' => {
+                    res.positions_by_key[((*c - b'a') + 10) as usize].push(curr);
+                }
+                b'A'..=b'Z' => {
+                    res.positions_by_key[((*c - b'A') + 36) as usize].push(curr);
+                }
+                _ => {
+                    unreachable!();
+                }
             }
 
             curr = curr.next(&size)
