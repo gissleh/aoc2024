@@ -6,6 +6,15 @@ pub trait Key<K> {
     fn key(&self) -> K;
 }
 
+#[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
+pub struct OnlyKey<K>(pub K);
+
+impl<K> Key<K> for OnlyKey<K> where K: Copy {
+    fn key(&self) -> K {
+        self.0
+    }
+}
+
 pub trait Cost<C>
 where
     C: Ord + Eq,

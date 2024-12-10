@@ -165,3 +165,15 @@ where
         true
     }
 }
+
+impl GatherTarget<()> for usize
+{
+    #[inline]
+    fn init_gather_target(_: usize) -> Self { 0 }
+
+    #[inline]
+    fn gather(&mut self, i: usize, _: ()) -> bool {
+        *self = i + 1;
+        true
+    }
+}

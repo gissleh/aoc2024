@@ -2,7 +2,7 @@ use crate::graph::Graph;
 use crate::search::{dijkstra, Order};
 use chrono::Datelike;
 use std::cmp::Ordering;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::fs::{create_dir_all, File, OpenOptions};
 use std::io::{Read, Write};
 use std::iter::Sum;
@@ -128,6 +128,13 @@ impl Runner {
         T: Display,
     {
         self.info.push((name.to_string(), format!("{value}")));
+    }
+
+    pub fn info_debug<T>(&mut self, name: &str, value: &T)
+    where
+        T: Debug,
+    {
+        self.info.push((name.to_string(), format!("{value:?}")));
     }
 
     fn run<T, F>(&mut self, name: &str, f: F) -> (T, usize)

@@ -1,4 +1,4 @@
-use crate::search::{Search, SeenSpace};
+use crate::search::{NoSeenSpace, Search, SeenSpace};
 
 pub mod bfs;
 pub mod dfs;
@@ -18,5 +18,9 @@ pub trait Order<S>: Sized {
             order: self,
             spooky_ghost: Default::default(),
         }
+    }
+
+    fn without_seen_space(self) -> Search<S, NoSeenSpace, Self> {
+        self.with_seen_space(NoSeenSpace)
     }
 }

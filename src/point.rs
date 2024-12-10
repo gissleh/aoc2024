@@ -3,6 +3,45 @@ use std::cmp::minmax;
 use std::ops::{Add, Sub};
 
 #[allow(dead_code)]
+pub trait CardinalNeighbors: Copy {
+    fn cardinal_neighbors(&self) -> [Self; 4];
+}
+
+impl<T> CardinalNeighbors for (T, T)
+where
+    T: Copy + Add<Output = T> + Sub<Output = T> + One,
+{
+    fn cardinal_neighbors(&self) -> [Self; 4] {
+        let one = T::one();
+        let (x, y) = *self;
+
+        [
+            (x - one, y),
+            (x, y - one),
+            (x + one, y),
+            (x, y + one),
+        ]
+    }
+}
+
+impl<T> CardinalNeighbors for [T; 2]
+where
+    T: Copy + Add<Output = T> + Sub<Output = T> + One,
+{
+    fn cardinal_neighbors(&self) -> [Self; 4] {
+        let one = T::one();
+        let [x, y] = *self;
+
+        [
+            [x - one, y],
+            [x, y - one],
+            [x + one, y],
+            [x, y + one],
+        ]
+    }
+}
+
+#[allow(dead_code)]
 pub trait Neighbors2D: Copy {
     fn neighbors_2d(&self) -> [Self; 8];
 }
