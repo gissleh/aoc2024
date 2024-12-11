@@ -1,8 +1,8 @@
-use std::mem;
 use common::parser;
 use common::parser::Parser;
 use common::runner::Runner;
 use rustc_hash::{FxBuildHasher, FxHashMap};
+use std::mem;
 
 pub fn main(r: &mut Runner, input: &[u8]) {
     let pebbles = r.prep("Parse", || parser().parse_value(input).unwrap());
@@ -55,11 +55,20 @@ fn part_counters(pebbles: &[u64], times: u32) -> u64 {
         for (pebble, count) in counts.iter() {
             match PebbleSplit::calculate(*pebble) {
                 PebbleSplit::Replace(pebble) => {
-                    counts2.entry(pebble).and_modify(|v| *v += count).or_insert(*count);
+                    counts2
+                        .entry(pebble)
+                        .and_modify(|v| *v += count)
+                        .or_insert(*count);
                 }
                 PebbleSplit::Split(left, right) => {
-                    counts2.entry(left).and_modify(|v| *v += count).or_insert(*count);
-                    counts2.entry(right).and_modify(|v| *v += count).or_insert(*count);
+                    counts2
+                        .entry(left)
+                        .and_modify(|v| *v += count)
+                        .or_insert(*count);
+                    counts2
+                        .entry(right)
+                        .and_modify(|v| *v += count)
+                        .or_insert(*count);
                 }
             }
         }
@@ -220,13 +229,15 @@ mod tests {
 
     #[test]
     fn part_1_counters_brute_works_on_example() {
-        assert_eq!(part_counters(&parser().parse_value(EXAMPLE).unwrap(), 6), 22);
+        assert_eq!(
+            part_counters(&parser().parse_value(EXAMPLE).unwrap(), 6),
+            22
+        );
         assert_eq!(
             part_counters(&parser().parse_value(EXAMPLE).unwrap(), 25),
             55312
         );
     }
-
 
     #[test]
     fn dp_tests() {
