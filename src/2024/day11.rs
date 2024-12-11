@@ -1,3 +1,4 @@
+use std::mem;
 use common::parser;
 use common::parser::Parser;
 use common::runner::Runner;
@@ -10,7 +11,12 @@ pub fn main(r: &mut Runner, input: &[u8]) {
     r.set_tail("Parse");
     r.part("Part 1 (DP)", || part_dp(&pebbles, 25));
     r.part("Part 2 (DP)", || part_dp(&pebbles, 75));
+    r.set_tail("Parse");
+    r.part("Part 1 (Counters)", || part_counters(&pebbles, 25));
+    r.part("Part 2 (Counters)", || part_counters(&pebbles, 75));
+
     r.connect("Part 1 (Brute)", "Part 2 (DP)");
+    r.connect("Part 1 (Brute)", "Part 2 (Counters)");
 }
 
 fn parser<'i>() -> impl Parser<'i, Vec<u64>> {
@@ -28,14 +34,40 @@ fn part_brute(pebbles: &[u64], times: u32) -> usize {
 
 fn part_dp(pebbles: &[u64], times: u32) -> u64 {
     let mut total = 0;
-    let mut cache =
-        FxHashMap::with_capacity_and_hasher(pebbles.len() * 128, FxBuildHasher::default());
+    let mut cache = FxHashMap::with_capacity_and_hasher(2048, FxBuildHasher::default());
 
     for pebble in pebbles.iter() {
         total += count_pebbles(*pebble, times, &mut cache);
     }
 
     total
+}
+
+fn part_counters(pebbles: &[u64], times: u32) -> u64 {
+    let mut counts = FxHashMap::with_capacity_and_hasher(2048, FxBuildHasher::default());
+    let mut counts2 = FxHashMap::with_capacity_and_hasher(2048, FxBuildHasher::default());
+    for pebble in pebbles.iter() {
+        *counts.entry(*pebble).or_insert(0) += 1;
+    }
+
+    for _ in 0..times {
+        counts2.clear();
+        for (pebble, count) in counts.iter() {
+            match PebbleSplit::calculate(*pebble) {
+                PebbleSplit::Replace(pebble) => {
+                    counts2.entry(pebble).and_modify(|v| *v += count).or_insert(*count);
+                }
+                PebbleSplit::Split(left, right) => {
+                    counts2.entry(left).and_modify(|v| *v += count).or_insert(*count);
+                    counts2.entry(right).and_modify(|v| *v += count).or_insert(*count);
+                }
+            }
+        }
+
+        mem::swap(&mut counts, &mut counts2);
+    }
+
+    counts.values().sum()
 }
 
 fn count_pebbles(pebble: u64, remaining: u32, cache: &mut FxHashMap<(u64, u32), u64>) -> u64 {
@@ -49,41 +81,11 @@ fn count_pebbles(pebble: u64, remaining: u32, cache: &mut FxHashMap<(u64, u32), 
         }
     }
 
-    let next_r = remaining - 1;
-    let res = match pebble {
-        0 => count_pebbles(1, next_r, cache),
-        10..=99 => {
-            count_pebbles(pebble / 10, next_r, cache) + count_pebbles(pebble % 10, next_r, cache)
+    let res = match PebbleSplit::calculate(pebble) {
+        PebbleSplit::Split(left, right) => {
+            count_pebbles(left, remaining - 1, cache) + count_pebbles(right, remaining - 1, cache)
         }
-        1000..=9999 => {
-            count_pebbles(pebble / 100, next_r, cache) + count_pebbles(pebble % 100, next_r, cache)
-        }
-        100000..=999999 => {
-            count_pebbles(pebble / 1_000, next_r, cache)
-                + count_pebbles(pebble % 1_000, next_r, cache)
-        }
-        10000000..=99999999 => {
-            count_pebbles(pebble / 10_000, next_r, cache)
-                + count_pebbles(pebble % 10_000, next_r, cache)
-        }
-        1000000000..=9999999999 => {
-            count_pebbles(pebble / 100_000, next_r, cache)
-                + count_pebbles(pebble % 100_000, next_r, cache)
-        }
-        100000000000..=999999999999 => {
-            count_pebbles(pebble / 1_000_000, next_r, cache)
-                + count_pebbles(pebble % 1_000_000, next_r, cache)
-        }
-        10000000000000..=99999999999999 => {
-            count_pebbles(pebble / 10_000_000, next_r, cache)
-                + count_pebbles(pebble % 10_000_000, next_r, cache)
-        }
-        1000000000000000..=9999999999999999 => {
-            count_pebbles(pebble / 100_000_000, next_r, cache)
-                + count_pebbles(pebble % 100_000_000, next_r, cache)
-        }
-        100000000000000000.. => unreachable!(),
-        _ => count_pebbles(pebble * 2024, next_r, cache),
+        PebbleSplit::Replace(pebble) => count_pebbles(pebble, remaining - 1, cache),
     };
 
     if remaining > 3 {
@@ -91,6 +93,38 @@ fn count_pebbles(pebble: u64, remaining: u32, cache: &mut FxHashMap<(u64, u32), 
     }
 
     res
+}
+
+enum PebbleSplit {
+    Split(u64, u64),
+    Replace(u64),
+}
+
+impl PebbleSplit {
+    #[inline]
+    fn calculate(pebble: u64) -> Self {
+        match pebble {
+            0 => PebbleSplit::Replace(1),
+            10..=99 => PebbleSplit::Split(pebble / 10, pebble % 10),
+            1000..=9999 => PebbleSplit::Split(pebble / 100, pebble % 100),
+            100000..=999999 => PebbleSplit::Split(pebble / 1_000, pebble % 1_000),
+            10000000..=99999999 => PebbleSplit::Split(pebble / 10_000, pebble % 10_000),
+            1000000000..=9999999999 => PebbleSplit::Split(pebble / 100_000, pebble % 100_000),
+            100000000000..=999999999999 => {
+                PebbleSplit::Split(pebble / 1_000_000, pebble % 1_000_000)
+            }
+            10000000000000..=99999999999999 => {
+                PebbleSplit::Split(pebble / 10_000_000, pebble % 10_000_000)
+            }
+            1000000000000000..=9999999999999999 => {
+                PebbleSplit::Split(pebble / 100_000_000, pebble % 100_000_000)
+            }
+            100000000000000000.. => {
+                PebbleSplit::Split(pebble / 1_000_000_000, pebble % 1_000_000_000)
+            }
+            _ => PebbleSplit::Replace(pebble * 2024),
+        }
+    }
 }
 
 struct Pebbles {
@@ -102,26 +136,13 @@ impl Pebbles {
         let mut current = 0;
         loop {
             let Pebble { number, next } = self.data[current];
-            match number {
-                0 => self.data[current].number = 1,
-                10..=99 => self.split_at(current, number / 10, number % 10),
-                1000..=9999 => self.split_at(current, number / 100, number % 100),
-                100000..=999999 => self.split_at(current, number / 1_000, number % 1_000),
-                10000000..=99999999 => self.split_at(current, number / 10_000, number % 10_000),
-                1000000000..=9999999999 => {
-                    self.split_at(current, number / 100_000, number % 100_000)
+            match PebbleSplit::calculate(number) {
+                PebbleSplit::Split(left, right) => {
+                    self.split_at(current, left, right);
                 }
-                100000000000..=999999999999 => {
-                    self.split_at(current, number / 1_000_000, number % 1_000_000)
+                PebbleSplit::Replace(number) => {
+                    self.data[current].number = number;
                 }
-                10000000000000..=99999999999999 => {
-                    self.split_at(current, number / 10_000_000, number % 10_000_000)
-                }
-                1000000000000000..=9999999999999999 => {
-                    self.split_at(current, number / 100_000_000, number % 100_000_000)
-                }
-                100000000000000000.. => unreachable!(),
-                _ => self.data[current].number *= 2024,
             }
 
             current = next;
@@ -196,6 +217,16 @@ mod tests {
             55312
         );
     }
+
+    #[test]
+    fn part_1_counters_brute_works_on_example() {
+        assert_eq!(part_counters(&parser().parse_value(EXAMPLE).unwrap(), 6), 22);
+        assert_eq!(
+            part_counters(&parser().parse_value(EXAMPLE).unwrap(), 25),
+            55312
+        );
+    }
+
 
     #[test]
     fn dp_tests() {
