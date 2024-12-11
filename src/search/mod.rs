@@ -11,10 +11,10 @@ use order::dfs::DFS;
 use order::dijkstra::{AStarBinaryHeap, DijkstraBinaryHeap};
 
 use crate::search::attributes::Heuristic;
+use crate::utils::GatherTarget;
 pub use attributes::{Cost, Key, OnlyKey};
 pub use order::Order;
 pub use seen::{NoSeenSpace, SeenSpace};
-use crate::utils::GatherTarget;
 
 pub struct Search<S, SEEN, ORDER>
 where
@@ -63,13 +63,13 @@ where
     pub fn gather<G, F, T>(&mut self, f: F) -> G
     where
         F: Fn(&mut Self, S) -> Option<T>,
-        G: GatherTarget<T>
+        G: GatherTarget<T>,
     {
         let mut target = G::init_gather_target(0);
         let mut i = 0;
         while let Some(res) = self.find(|s, state| f(s, state)) {
             if !target.gather(i, res) {
-                break
+                break;
             }
             i += 1;
         }

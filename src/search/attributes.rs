@@ -9,7 +9,10 @@ pub trait Key<K> {
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub struct OnlyKey<K>(pub K);
 
-impl<K> Key<K> for OnlyKey<K> where K: Copy {
+impl<K> Key<K> for OnlyKey<K>
+where
+    K: Copy,
+{
     fn key(&self) -> K {
         self.0
     }

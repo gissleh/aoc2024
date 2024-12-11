@@ -1,8 +1,8 @@
-use rustc_hash::FxHashSet;
 use common::grid::Grid;
 use common::point::CardinalNeighbors;
 use common::runner::Runner;
 use common::search::{dfs, NoSeenSpace, OnlyKey, Order, SeenSpace};
+use rustc_hash::FxHashSet;
 
 pub fn main(r: &mut Runner, input: &[u8]) {
     let map = r.prep("Parse", || TopographicalMap::parse(input));
@@ -15,7 +15,10 @@ pub fn main(r: &mut Runner, input: &[u8]) {
 }
 
 fn part_1(map: &TopographicalMap) -> usize {
-    part_common(map, FxHashSet::with_capacity_and_hasher(64, Default::default()))
+    part_common(
+        map,
+        FxHashSet::with_capacity_and_hasher(64, Default::default()),
+    )
 }
 
 fn part_2(map: &TopographicalMap) -> usize {
@@ -57,8 +60,12 @@ struct TopographicalMap {
 impl TopographicalMap {
     fn parse(input: &[u8]) -> Self {
         let width = input.iter().position(|b| *b == b'\n').unwrap();
-        let height = input.len() / (width+1);
-        let mut grid = Grid::new_with_default(((width+2) as u8, (height+2) as u8), vec![255; (width+2) * (height+2)], 255);
+        let height = input.len() / (width + 1);
+        let mut grid = Grid::new_with_default(
+            ((width + 2) as u8, (height + 2) as u8),
+            vec![255; (width + 2) * (height + 2)],
+            255,
+        );
         let mut trailheads = Vec::with_capacity(64);
 
         let mut pos = (1, 1);
@@ -75,7 +82,7 @@ impl TopographicalMap {
             pos.0 += 1;
         }
 
-        Self{grid, trailheads}
+        Self { grid, trailheads }
     }
 }
 
@@ -96,8 +103,8 @@ mod tests {
     #[test]
     fn parses_correctly() {
         let g = TopographicalMap::parse(SAMPLE_1);
-        assert_eq!(g.grid.size().0, 8+2);
-        assert_eq!(g.grid.size().1, 8+2);
+        assert_eq!(g.grid.size().0, 8 + 2);
+        assert_eq!(g.grid.size().1, 8 + 2);
         assert_eq!(g.trailheads.len(), 9);
         assert_eq!(g.trailheads[0], (3, 1));
         assert_eq!(g.trailheads[1], (5, 1));

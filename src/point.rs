@@ -15,12 +15,7 @@ where
         let one = T::one();
         let (x, y) = *self;
 
-        [
-            (x - one, y),
-            (x, y - one),
-            (x + one, y),
-            (x, y + one),
-        ]
+        [(x - one, y), (x, y - one), (x + one, y), (x, y + one)]
     }
 }
 
@@ -32,12 +27,7 @@ where
         let one = T::one();
         let [x, y] = *self;
 
-        [
-            [x - one, y],
-            [x, y - one],
-            [x + one, y],
-            [x, y + one],
-        ]
+        [[x - one, y], [x, y - one], [x + one, y], [x, y + one]]
     }
 }
 

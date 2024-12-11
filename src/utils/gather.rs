@@ -166,10 +166,11 @@ where
     }
 }
 
-impl GatherTarget<()> for usize
-{
+impl GatherTarget<()> for usize {
     #[inline]
-    fn init_gather_target(_: usize) -> Self { 0 }
+    fn init_gather_target(_: usize) -> Self {
+        0
+    }
 
     #[inline]
     fn gather(&mut self, i: usize, _: ()) -> bool {

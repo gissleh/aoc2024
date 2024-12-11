@@ -23,7 +23,9 @@ pub fn main(r: &mut Runner, input: &[u8]) {
     r.part("Part 1 (Segment Map)", || part_1_segments(&file));
     r.part("Part 2 (Segment Map)", || part_2_segments(&file));
     r.set_tail("Part 1 (Segment Map)");
-    r.part("Part 2 (Segment Map, Hydra)", || part_2_segments_hydra(&file));
+    r.part("Part 2 (Segment Map, Hydra)", || {
+        part_2_segments_hydra(&file)
+    });
     r.info("Segment Map Size", &file.len());
 }
 
@@ -137,7 +139,7 @@ fn part_2_hydra(uncompacted_disk: &[u16]) -> u64 {
         }
         if *head >= tail {
             if tail < file_size {
-                break
+                break;
             }
             tail -= file_size;
             continue;
