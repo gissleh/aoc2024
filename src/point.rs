@@ -15,7 +15,7 @@ where
         let one = T::one();
         let (x, y) = *self;
 
-        [(x - one, y), (x, y - one), (x + one, y), (x, y + one)]
+        [(x, y - one), (x - one, y), (x + one, y), (x, y + one)]
     }
 }
 
@@ -27,9 +27,39 @@ where
         let one = T::one();
         let [x, y] = *self;
 
-        [[x - one, y], [x, y - one], [x + one, y], [x, y + one]]
+        [[x, y - one], [x - one, y], [x + one, y], [x, y + one]]
     }
 }
+
+#[allow(dead_code)]
+pub trait XNeighbors: Copy {
+    fn x_neighbors(&self) -> [Self; 4];
+}
+
+impl<T> XNeighbors for (T, T)
+where
+    T: Copy + Add<Output = T> + Sub<Output = T> + One,
+{
+    fn x_neighbors(&self) -> [Self; 4] {
+        let one = T::one();
+        let (x, y) = *self;
+
+        [(x - one, y - one), (x + one, y - one), (x - one, y + one), (x + one, y + one)]
+    }
+}
+
+impl<T> XNeighbors for [T; 2]
+where
+    T: Copy + Add<Output = T> + Sub<Output = T> + One,
+{
+    fn x_neighbors(&self) -> [Self; 4] {
+        let one = T::one();
+        let [x, y] = *self;
+
+        [[x - one, y - one], [x + one, y - one], [x - one, y + one], [x + one, y + one]]
+    }
+}
+
 
 #[allow(dead_code)]
 pub trait Neighbors2D: Copy {

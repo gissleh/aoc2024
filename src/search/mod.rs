@@ -12,7 +12,7 @@ use order::dijkstra::{AStarBinaryHeap, DijkstraBinaryHeap};
 
 use crate::search::attributes::Heuristic;
 use crate::utils::GatherTarget;
-pub use attributes::{Cost, Key, OnlyKey};
+pub use attributes::{Cost, Key, OnlyKey, KE};
 pub use order::Order;
 pub use seen::{NoSeenSpace, SeenSpace};
 
@@ -41,9 +41,12 @@ where
         self.seen.reset();
     }
 
-    pub fn push(&mut self, s: S) {
+    pub fn push(&mut self, s: S) -> bool {
         if self.seen.try_mark_seen(s) {
             self.order.push(s);
+            true
+        } else {
+            false
         }
     }
 
@@ -75,6 +78,19 @@ where
         }
 
         target
+    }
+
+    pub fn fold<F, T, FR, FF>(&mut self, init: FR, search_fn: F, fold_fn: FF) -> FR
+    where
+        F: Fn(&mut Self, S) -> Option<T>,
+        FF: Fn(FR, T) -> FR,
+    {
+        let mut fold_res = init;
+        while let Some(res) = self.find(|s, state| search_fn(s, state)) {
+            fold_res = fold_fn(fold_res, res)
+        }
+
+        fold_res
     }
 }
 

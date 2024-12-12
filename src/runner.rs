@@ -195,7 +195,7 @@ impl Runner {
             }
 
             for (next, _) in edges.iter() {
-                s.push((*next, dur + self.graph.node(*next).duration_ns))
+                s.push((*next, dur + self.graph.node(*next).duration_ns));
             }
 
             None
@@ -242,7 +242,7 @@ where
     TD: Display,
 {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} (carrying data)", self.0)
+        write!(f, "{} (+data for next part)", self.0)
     }
 }
 

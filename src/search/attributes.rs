@@ -1,4 +1,5 @@
 use arrayvec::ArrayVec;
+use std::hash::{Hash, Hasher};
 use std::ops::Add;
 use std::simd::{LaneCount, Simd, SimdElement, SupportedLaneCount};
 
@@ -147,3 +148,35 @@ self_key!(isize);
 self_key!((isize, isize));
 self_key!((isize, isize, isize));
 self_key!((isize, isize, isize, isize));
+
+#[derive(Copy, Clone)]
+pub struct KE<K, E>(pub K, pub E);
+
+impl<K, E> Key<K> for KE<K, E>
+where
+    K: Copy,
+{
+    fn key(&self) -> K {
+        self.0
+    }
+}
+
+impl<K, E> Hash for KE<K, E>
+where
+    K: Hash,
+{
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.0.hash(state);
+    }
+}
+
+impl<K, E> PartialEq for KE<K, E>
+where
+    K: PartialEq,
+{
+    fn eq(&self, other: &KE<K, E>) -> bool {
+        self.0 == other.0
+    }
+}
+
+impl<K, E> Eq for KE<K, E> where K: Eq {}
