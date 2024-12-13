@@ -102,18 +102,22 @@ fn part_2(farm: &UniqueFarmGrid) -> u32 {
                     }
 
                     if corners == 0 && sides == 0 {
-                        return Some(4)
+                        return Some(4);
                     } else if sides.count_ones() > 3 {
-                        return Some(4 - corners.count_ones())
+                        return Some(4 - corners.count_ones());
                     } else if sides.count_ones() == 1 {
-                        return Some(2)
-                    } else if let Some((_, inner_mask)) = L_CORNERS.iter().find(|(sides2, _)| *sides2 == sides) {
+                        return Some(2);
+                    } else if let Some((_, inner_mask)) =
+                        L_CORNERS.iter().find(|(sides2, _)| *sides2 == sides)
+                    {
                         return if corners & *inner_mask == 0 {
                             Some(2)
                         } else {
                             Some(1)
-                        }
-                    } else if let Some((_, inner_mask)) = T_INTERSECTIONS.iter().find(|(sides2, _)| *sides2 == sides) {
+                        };
+                    } else if let Some((_, inner_mask)) =
+                        T_INTERSECTIONS.iter().find(|(sides2, _)| *sides2 == sides)
+                    {
                         Some((!corners & *inner_mask).count_ones())
                     } else {
                         Some(0)
