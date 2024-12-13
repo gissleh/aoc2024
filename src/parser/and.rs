@@ -106,6 +106,44 @@ where
     }
 }
 
+pub struct AndSkip<'i, T1, T2, P1, P2>(pub P1, pub P2, pub PhantomData<(&'i T1, &'i T2)>);
+
+impl<'i, T1, T2, P1, P2> Parser<'i, T1> for AndSkip<'i, T1, T2, P1, P2>
+where
+    P1: Parser<'i, T1>,
+    P2: Parser<'i, T2>,
+{
+    #[inline]
+    fn parse(&self, input: &'i [u8]) -> Option<(T1, &'i [u8])> {
+        let (v1, next) = self.0.parse(input)?;
+        if let Some((_, next)) = self.1.parse(next) {
+            Some((v1, next))
+        } else {
+            Some((v1, next))
+        }
+    }
+
+    #[inline]
+    fn parse_discard(&self, input: &'i [u8]) -> Option<&'i [u8]> {
+        let next = self.0.parse_discard(input)?;
+        if let Some(next) = self.1.parse_discard(next) {
+            Some(next)
+        } else {
+            Some(next)
+        }
+    }
+
+    #[inline]
+    fn can_parse(&self, input: &'i [u8]) -> bool {
+        self.0.can_parse(input)
+    }
+
+    #[inline]
+    fn find_parsable(&self, input: &'i [u8]) -> Option<(T1, usize, &'i [u8])> {
+        self.0.find_parsable(input)
+    }
+}
+
 impl<'i, T1, T2, P1, P2> Clone for AndDiscard<'i, T1, T2, P1, P2>
 where
     P1: Clone,

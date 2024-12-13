@@ -10,7 +10,7 @@ mod repeat;
 mod rewind;
 mod within;
 
-use crate::parser::and::AndInstead;
+use crate::parser::and::{AndInstead, AndSkip};
 use crate::parser::delimiter::DelimitedBy;
 use crate::parser::extract::Extract;
 use crate::parser::map::Map;
@@ -93,6 +93,14 @@ pub trait Parser<'i, T>: Sized {
         P2: Parser<'i, T2>,
     {
         AndDiscard(self, rhs, Default::default())
+    }
+
+    #[inline]
+    fn and_skip<T2, P2>(self, rhs: P2) -> AndSkip<'i, T, T2, Self, P2>
+    where
+        P2: Parser<'i, T2>,
+    {
+        AndSkip(self, rhs, Default::default())
     }
 
     #[inline]

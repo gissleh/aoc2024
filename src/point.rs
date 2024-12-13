@@ -44,7 +44,12 @@ where
         let one = T::one();
         let (x, y) = *self;
 
-        [(x - one, y - one), (x + one, y - one), (x - one, y + one), (x + one, y + one)]
+        [
+            (x - one, y - one),
+            (x + one, y - one),
+            (x - one, y + one),
+            (x + one, y + one),
+        ]
     }
 }
 
@@ -56,10 +61,14 @@ where
         let one = T::one();
         let [x, y] = *self;
 
-        [[x - one, y - one], [x + one, y - one], [x - one, y + one], [x + one, y + one]]
+        [
+            [x - one, y - one],
+            [x + one, y - one],
+            [x - one, y + one],
+            [x + one, y + one],
+        ]
     }
 }
-
 
 #[allow(dead_code)]
 pub trait Neighbors2D: Copy {
