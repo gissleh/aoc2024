@@ -1,9 +1,11 @@
+use num::integer::lcm;
 use common::parser;
 use common::parser::Parser;
 use common::runner::Runner;
+use common::utils::crt;
 
 pub fn main(r: &mut Runner, input: &[u8]) {
-    let robots = r.prep("Parse", || Robot::parse_list(input));
+    let robots = r.prep("Parse", || Robot::<101, 103>::parse_list(input));
 
     r.part("Part 1", || part_1::<101, 103>(&robots));
     r.part("Part 2", || part_2::<101, 103>(&robots));
@@ -11,15 +13,77 @@ pub fn main(r: &mut Runner, input: &[u8]) {
     r.info("Robots", &robots.len());
 }
 
-fn part_1<const W: i32, const H: i32>(robots: &[Robot]) -> u32 {
+fn part_1<const W: u32, const H: u32>(robots: &[Robot<W, H>]) -> u32 {
     let mut robots = robots.iter().copied().collect::<Vec<_>>();
 
     for _ in 0..100 {
         for robot in robots.iter_mut() {
-            robot.run_move::<W, H>()
+            robot.run_move()
         }
     }
 
+    quadrants::<W, H>(&robots).iter().product::<u32>()
+}
+
+fn part_2<const W: u32, const H: u32>(robots: &[Robot<W, H>]) -> u32 {
+    let mut robots = robots.iter().copied().collect::<Vec<_>>();
+
+    let mut x_hist = vec![0u16; W as usize];
+    let mut y_hist = vec![0u16; H as usize];
+
+    let mut best_x = (0u32, 0u16);
+    let mut best_y = (0u32, 0u16);
+
+    for seconds in 1..lcm(W, H) {
+        for robot in robots.iter_mut() {
+            robot.run_move();
+            x_hist[robot.p.0 as usize] += 1;
+            y_hist[robot.p.1 as usize] += 1;
+        }
+
+        let x_max = *x_hist.iter().max().unwrap();
+        if x_max > best_x.1 {
+            best_x = (seconds, x_max);
+        }
+
+        let y_max = *y_hist.iter().max().unwrap();
+        if y_max > best_y.1 {
+            best_y = (seconds, y_max);
+        }
+
+        if best_x.1 > 24 && best_y.1 > 24 {
+            // CRT code I borrowed from Rosetta Code 3 years ago go brr.
+            return crt(&[
+                (best_x.0 as i64, W as i64),
+                (best_y.0 as i64, H as i64),
+            ]) as u32;
+        }
+
+        #[cfg(debug_assertions)]
+        if x_max > 24 || y_max > 24 {
+            println!("Seconds: {}", seconds);
+            for y in 0..H {
+                for x in 0..W {
+                    let count = robots.iter().filter(|r| r.p == (x, y)).count();
+                    if count > 0 {
+                        print!("{count}");
+                    } else {
+                        print!(" ");
+                    }
+                }
+
+                println!();
+            }
+        }
+
+        x_hist.fill(0);
+        y_hist.fill(0);
+    }
+
+    0
+}
+
+fn quadrants<const W: u32, const H: u32>(robots: &[Robot<W, H>]) -> [u32; 4] {
     let mut quadrants = [0u32; 4];
     for robot in robots.iter() {
         let mut qi = 0usize;
@@ -38,47 +102,22 @@ fn part_1<const W: i32, const H: i32>(robots: &[Robot]) -> u32 {
         quadrants[qi] += 1;
     }
 
-    quadrants.iter().product::<u32>()
-}
-
-fn part_2<const W: i32, const H: i32>(robots: &[Robot]) -> u32 {
-    let mut robots = robots.iter().copied().collect::<Vec<_>>();
-    let mut grid = vec![0u128; H as usize];
-
-    for seconds in 1.. {
-        grid.fill(0);
-        for robot in robots.iter_mut() {
-            robot.run_move::<W, H>();
-            grid[robot.p.1 as usize] |= 1 << robot.p.0;
-        }
-
-        // Not proud of this one, but assume any 16-length line of drones mean the pattern is found
-        for i in 0..grid.len() {
-            for j in 0..112 {
-                let m = 0b1111111111111111 << j;
-                if grid[i] & m == m {
-                    return seconds;
-                }
-            }
-        }
-    }
-
-    0
+    quadrants
 }
 
 #[derive(Copy, Clone, Debug)]
-struct Robot {
-    p: (i32, i32),
-    v: (i32, i32),
+struct Robot<const W: u32, const H: u32> {
+    p: (u32, u32),
+    v: (u32, u32),
 }
 
-impl Robot {
-    fn run_move<const W: i32, const H: i32>(&mut self) {
+impl<const W: u32, const H: u32> Robot<W, H> {
+    fn run_move(&mut self) {
         let (px, py) = &mut self.p;
         let (vx, vy) = self.v;
 
-        *px = add_velocity::<W>(*px, vx);
-        *py = add_velocity::<H>(*py, vy);
+        *px = (*px + vx) % W;
+        *py = (*py + vy) % H;
     }
 
     fn parse_list(input: &[u8]) -> Vec<Self> {
@@ -92,9 +131,9 @@ impl Robot {
     fn parser<'i>() -> impl Parser<'i, Self> {
         b"p="
             .and_instead(
-                parser::int::<i32>()
+                parser::uint::<u32>()
                     .and_discard(b',')
-                    .and(parser::int::<i32>()),
+                    .and(parser::uint::<u32>()),
             )
             .and_discard(b" v=")
             .and(
@@ -102,17 +141,7 @@ impl Robot {
                     .and_discard(b',')
                     .and(parser::int::<i32>()),
             )
-            .map(|(p, v)| Robot { p, v })
-    }
-}
-
-#[inline]
-fn add_velocity<const W: i32>(p: i32, v: i32) -> i32 {
-    let p = p + v;
-    if p < 0 {
-        p + W
-    } else {
-        p % W
+            .map(|(p, v): ((u32, u32), (i32, i32))| Robot { p, v: ((v.0 + W as i32) as u32 % W, (v.1 + H as i32) as u32 % H) })
     }
 }
 
@@ -136,38 +165,38 @@ p=9,5 v=-3,-3
 
     #[test]
     fn robot_moves_correctly() {
-        let mut robot = Robot::parser().parse_value(b"p=2,4 v=2,-3").unwrap();
+        let mut robot = Robot::<11, 7>::parser().parse_value(b"p=2,4 v=2,-3").unwrap();
         assert_eq!(robot.p, (2, 4));
-        assert_eq!(robot.v, (2, -3));
+        assert_eq!(robot.v, (2, 7-3));
 
-        robot.run_move::<11, 7>();
+        robot.run_move();
         assert_eq!(robot.p, (4, 1));
 
-        robot.run_move::<11, 7>();
+        robot.run_move();
         assert_eq!(robot.p, (6, 5));
 
-        robot.run_move::<11, 7>();
+        robot.run_move();
         assert_eq!(robot.p, (8, 2));
 
-        robot.run_move::<11, 7>();
+        robot.run_move();
         assert_eq!(robot.p, (10, 6));
 
-        robot.run_move::<11, 7>();
+        robot.run_move();
         assert_eq!(robot.p, (1, 3));
 
-        let mut robot = Robot::parser().parse_value(b"p=3,3 v=-3,-3").unwrap();
+        let mut robot = Robot::<11, 7>::parser().parse_value(b"p=3,3 v=-3,-3").unwrap();
         assert_eq!(robot.p, (3, 3));
-        assert_eq!(robot.v, (-3, -3));
+        assert_eq!(robot.v, (11-3, 7-3));
 
-        robot.run_move::<11, 7>();
+        robot.run_move();
         assert_eq!(robot.p, (0, 0));
 
-        robot.run_move::<11, 7>();
+        robot.run_move();
         assert_eq!(robot.p, (8, 4));
     }
 
     #[test]
     fn part_1_works_on_example() {
-        assert_eq!(part_1::<11, 7>(&Robot::parse_list(EXAMPLE)), 12);
+        assert_eq!(part_1(&Robot::<11, 7>::parse_list(EXAMPLE)), 12);
     }
 }
