@@ -87,7 +87,9 @@ impl Runner {
                     println!("Info:");
                     for (key, value) in self.info.iter() {
                         if value.contains("\n") {
-                            let value2 = value.trim_end_matches(|v| v == '\n').replace("\n", "\n    ");
+                            let value2 = value
+                                .trim_end_matches(|v| v == '\n')
+                                .replace("\n", "\n    ");
                             println!("  {}: \n    {}", key, value2);
                         } else {
                             println!("  {}: {}", key, value);

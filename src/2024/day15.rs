@@ -1,6 +1,7 @@
-use std::fmt::{Debug, Formatter};
+use arrayvec::ArrayVec;
 use common::grid::Grid;
 use common::runner::Runner;
+use std::fmt::{Debug, Formatter};
 
 pub fn main(r: &mut Runner, input: &[u8]) {
     let (warehouse, moves) = r.prep("Parse", || Warehouse::parse(input));
@@ -34,7 +35,7 @@ struct Warehouse {
 }
 
 impl Warehouse {
-    fn push_box(&mut self, box_pos: (u8, u8), m: Move) -> bool{
+    fn push_box(&mut self, box_pos: (u8, u8), m: Move) -> bool {
         let next_pos = m.next_pos(&box_pos);
 
         match self.grid[next_pos] {
@@ -42,7 +43,7 @@ impl Warehouse {
                 self.grid[next_pos] = Cell::Box;
                 self.grid[box_pos] = Cell::Empty;
                 true
-            },
+            }
             Cell::Box => {
                 if self.push_box(next_pos, m) {
                     self.grid[next_pos] = Cell::Box;
@@ -52,9 +53,7 @@ impl Warehouse {
                     false
                 }
             }
-            Cell::Wall => {
-                false
-            }
+            Cell::Wall => false,
         }
     }
 
@@ -62,13 +61,15 @@ impl Warehouse {
         let next_pos = m.next_pos(&self.robot_pos);
 
         match self.grid[next_pos] {
-            Cell::Empty => { self.robot_pos = next_pos; }
+            Cell::Empty => {
+                self.robot_pos = next_pos;
+            }
             Cell::Box => {
                 if self.push_box(next_pos, m) {
                     self.robot_pos = next_pos;
                 }
             }
-            Cell::Wall => { }
+            Cell::Wall => {}
         }
     }
 
@@ -144,10 +145,7 @@ impl Warehouse {
             })
             .collect::<Vec<_>>();
 
-        (Self {
-            robot_pos,
-            grid,
-        }, moves)
+        (Self { robot_pos, grid }, moves)
     }
 }
 
@@ -156,7 +154,7 @@ impl Debug for Warehouse {
         write!(f, "   ")?;
         for n in 0..self.grid.size().0 {
             if n % 10 == 0 {
-                write!(f, "{}", (n/10) % 10)?;
+                write!(f, "{}", (n / 10) % 10)?;
             } else {
                 write!(f, " ")?;
             }
@@ -199,25 +197,46 @@ struct WideWarehouse {
 }
 
 impl WideWarehouse {
+    #[inline]
     fn box_at(&self, pos: (u8, u8)) -> Option<[(u8, u8); 2]> {
         match self.grid[pos] {
-            WideCell::BoxLeft => Some([ pos, (pos.0 + 1, pos.1) ]),
-            WideCell::BoxRight => Some([ (pos.0 - 1, pos.1), pos ]),
+            WideCell::BoxLeft => Some([pos, (pos.0 + 1, pos.1)]),
+            WideCell::BoxRight => Some([(pos.0 - 1, pos.1), pos]),
             _ => None,
         }
     }
 
-    fn push_box(&mut self, box_pos: [(u8, u8); 2], m: Move, dry: bool) -> bool{
+    #[inline]
+    fn boxes_at(&self, box_pos: [(u8, u8); 2]) -> ArrayVec<[(u8, u8); 2], 2> {
+        let mut res = ArrayVec::new();
+        if let Some(box1) = self.box_at(box_pos[0]) {
+            res.push(box1);
+        }
+        if let Some(box2) = self.box_at(box_pos[1]) {
+            if res.len() == 0 || res[0] != box2 {
+                res.push(box2);
+            }
+        }
+
+        res
+    }
+
+    #[inline]
+    fn move_box(&mut self, box_pos: [(u8, u8); 2], next_pos: [(u8, u8); 2]) {
+        self.grid[box_pos[0]] = WideCell::Empty;
+        self.grid[box_pos[1]] = WideCell::Empty;
+        self.grid[next_pos[0]] = WideCell::BoxLeft;
+        self.grid[next_pos[1]] = WideCell::BoxRight;
+    }
+
+    fn push_box(&mut self, box_pos: [(u8, u8); 2], m: Move, dry: bool) -> bool {
         // The space above is clear
         match m.side_of_box(&box_pos) {
             BoxSide::NS(next_pos) => {
                 if let WideCell::Empty = self.grid[next_pos[0]] {
                     if let WideCell::Empty = self.grid[next_pos[1]] {
                         if !dry {
-                            self.grid[box_pos[0]] = WideCell::Empty;
-                            self.grid[box_pos[1]] = WideCell::Empty;
-                            self.grid[next_pos[0]] = WideCell::BoxLeft;
-                            self.grid[next_pos[1]] = WideCell::BoxRight;
+                            self.move_box(box_pos, next_pos);
                         }
                         return true;
                     }
@@ -232,69 +251,22 @@ impl WideWarehouse {
                 }
 
                 // The above/below space is boxed
-                if let Some(box1) = self.box_at(next_pos[0]) {
-                    if let Some(box2) = self.box_at(next_pos[1]) {
-                        if box1 == box2 {
-                            #[cfg(test)]
-                            if dry {
-                                println!("Indirectly Pushing {box1:?}");
-                            }
-                            if self.push_box(box1, m, dry) {
-                                if !dry {
-                                    self.grid[box_pos[0]] = WideCell::Empty;
-                                    self.grid[box_pos[1]] = WideCell::Empty;
-                                    self.grid[next_pos[0]] = WideCell::BoxLeft;
-                                    self.grid[next_pos[1]] = WideCell::BoxRight;
-                                }
-
-                                return true
-                            }
-                        } else {
-                            #[cfg(test)]
-                            if dry {
-                                println!("Indirectly Pushing {box1:?} and {box2:?}");
-                            }
-                            if self.push_box(box1, m, dry) && self.push_box(box2, m, dry) {
-                                if !dry {
-                                    self.grid[box_pos[0]] = WideCell::Empty;
-                                    self.grid[box_pos[1]] = WideCell::Empty;
-                                    self.grid[next_pos[0]] = WideCell::BoxLeft;
-                                    self.grid[next_pos[1]] = WideCell::BoxRight;
-                                }
-
-                                return true;
-                            }
-                        }
-                    } else {
-                        #[cfg(test)]
-                        if dry {
-                            println!("Indirectly Pushing {box1:?}");
-                        }
-                        if self.push_box(box1, m, dry) {
-                            if !dry {
-                                self.grid[box_pos[0]] = WideCell::Empty;
-                                self.grid[box_pos[1]] = WideCell::Empty;
-                                self.grid[next_pos[0]] = WideCell::BoxLeft;
-                                self.grid[next_pos[1]] = WideCell::BoxRight;
-                            }
-
-                            return true
-                        }
-                    }
-                } else if let Some(box2) = self.box_at(next_pos[1]) {
-                    #[cfg(test)]
-                    if dry {
-                        println!("Indirectly Pushing {box2:?}");
-                    }
-                    if self.push_box(box2, m, dry) {
+                let boxes = self.boxes_at(next_pos);
+                if boxes.len() == 2 {
+                    if self.push_box(boxes[0], m, dry) && self.push_box(boxes[1], m, dry) {
                         if !dry {
-                            self.grid[box_pos[0]] = WideCell::Empty;
-                            self.grid[box_pos[1]] = WideCell::Empty;
-                            self.grid[next_pos[0]] = WideCell::BoxLeft;
-                            self.grid[next_pos[1]] = WideCell::BoxRight;
+                            self.move_box(box_pos, next_pos);
                         }
 
-                        return true
+                        return true;
+                    }
+                } else {
+                    if self.push_box(boxes[0], m, dry) {
+                        if !dry {
+                            self.move_box(box_pos, next_pos);
+                        }
+
+                        return true;
                     }
                 }
             }
@@ -302,11 +274,9 @@ impl WideWarehouse {
                 // The next spot is empty
                 if let WideCell::Empty = self.grid[check_pos] {
                     if !dry {
-                        self.grid[box_pos[0]] = WideCell::Empty;
-                        self.grid[box_pos[1]] = WideCell::Empty;
-                        self.grid[next_pos[0]] = WideCell::BoxLeft;
-                        self.grid[next_pos[1]] = WideCell::BoxRight;
+                        self.move_box(box_pos, next_pos);
                     }
+
                     return true;
                 }
 
@@ -314,10 +284,7 @@ impl WideWarehouse {
                 if let Some(other_box) = self.box_at(check_pos) {
                     if self.push_box(other_box, m, dry) {
                         if !dry {
-                            self.grid[box_pos[0]] = WideCell::Empty;
-                            self.grid[box_pos[1]] = WideCell::Empty;
-                            self.grid[next_pos[0]] = WideCell::BoxLeft;
-                            self.grid[next_pos[1]] = WideCell::BoxRight;
+                            self.move_box(box_pos, next_pos);
                         }
 
                         return true;
@@ -335,7 +302,9 @@ impl WideWarehouse {
         let next_pos = m.next_pos(&self.robot_pos);
 
         match self.grid[next_pos] {
-            WideCell::Empty => { self.robot_pos = next_pos; }
+            WideCell::Empty => {
+                self.robot_pos = next_pos;
+            }
             WideCell::BoxLeft => {
                 let box_pos = [next_pos, (next_pos.0 + 1, next_pos.1)];
                 #[cfg(test)]
@@ -354,7 +323,7 @@ impl WideWarehouse {
                     self.robot_pos = next_pos;
                 }
             }
-            WideCell::Wall => { }
+            WideCell::Wall => {}
         }
     }
 
@@ -389,7 +358,7 @@ impl WideWarehouse {
                 Cell::Empty => {
                     grid[(x, y)] = WideCell::Empty;
                     grid[(x + 1, y)] = WideCell::Empty;
-                },
+                }
                 Cell::Wall => {
                     grid[(x, y)] = WideCell::Wall;
                     grid[(x + 1, y)] = WideCell::Wall;
@@ -401,7 +370,10 @@ impl WideWarehouse {
             }
         }
 
-        Self{grid, robot_pos: (warehouse.robot_pos.0 * 2, warehouse.robot_pos.1)}
+        Self {
+            grid,
+            robot_pos: (warehouse.robot_pos.0 * 2, warehouse.robot_pos.1),
+        }
     }
 }
 
@@ -410,7 +382,7 @@ impl Debug for WideWarehouse {
         write!(f, "   ")?;
         for n in 0..self.grid.size().0 {
             if n % 10 == 0 {
-                write!(f, "{}", (n/10) % 10)?;
+                write!(f, "{}", (n / 10) % 10)?;
             } else {
                 write!(f, " ")?;
             }
@@ -447,7 +419,6 @@ impl Debug for WideWarehouse {
     }
 }
 
-
 #[derive(Eq, PartialEq, Debug, Default, Clone, Copy)]
 enum Cell {
     #[default]
@@ -477,15 +448,23 @@ impl Move {
     #[inline]
     fn side_of_box(&self, box_pos: &[(u8, u8); 2]) -> BoxSide {
         match self {
-            Move::Up | Move::Down => BoxSide::NS([self.next_pos(&box_pos[0]), self.next_pos(&box_pos[1])]),
-            Move::Left => BoxSide::WE((box_pos[0].0 - 1, box_pos[0].1), [
+            Move::Up | Move::Down => {
+                BoxSide::NS([self.next_pos(&box_pos[0]), self.next_pos(&box_pos[1])])
+            }
+            Move::Left => BoxSide::WE(
                 (box_pos[0].0 - 1, box_pos[0].1),
-                (box_pos[0].0, box_pos[0].1),
-            ]),
-            Move::Right => BoxSide::WE((box_pos[1].0 + 1, box_pos[0].1), [
-                (box_pos[1].0, box_pos[1].1),
-                (box_pos[1].0 + 1, box_pos[1].1),
-            ]),
+                [
+                    (box_pos[0].0 - 1, box_pos[0].1),
+                    (box_pos[0].0, box_pos[0].1),
+                ],
+            ),
+            Move::Right => BoxSide::WE(
+                (box_pos[1].0 + 1, box_pos[0].1),
+                [
+                    (box_pos[1].0, box_pos[1].1),
+                    (box_pos[1].0 + 1, box_pos[1].1),
+                ],
+            ),
         }
     }
 
@@ -532,7 +511,19 @@ vvv<<^>^v^^><<>>><>^<<><^vv^^<>vvv<>><^^v>^>vv<>v<<<<v<^v>^<^^>>>^<v<v
 v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^
 ";
 
-    const EXAMPLE_P2_SMALL: &[u8] = b"#######
+    const EXAMPLE_SMALL: &[u8] = b"########
+#..O.O.#
+##@.O..#
+#...O..#
+#.#.O..#
+#...O..#
+#......#
+########
+
+<^^>>>vv<v>>v<<
+";
+
+    const EXAMPLE_SMALL_P2: &[u8] = b"#######
 #...#.#
 #.....#
 #..OO@#
@@ -557,8 +548,20 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^
 ";
 
     #[test]
-    fn part2_works_on_p2_small_example() {
-        let (warehouse, moves) = Warehouse::parse(EXAMPLE_P2_SMALL);
+    fn part1_works_on_small_example() {
+        let (warehouse, moves) = Warehouse::parse(EXAMPLE_SMALL);
+        assert_eq!(part_1(&warehouse, &moves), 2028)
+    }
+
+    #[test]
+    fn part1_works_on_large_example() {
+        let (warehouse, moves) = Warehouse::parse(EXAMPLE_LARGE);
+        assert_eq!(part_1(&warehouse, &moves), 10092)
+    }
+
+    #[test]
+    fn part2_works_on_small_example() {
+        let (warehouse, moves) = Warehouse::parse(EXAMPLE_SMALL_P2);
         assert_eq!(part_2(&warehouse, &moves), 618)
     }
 
