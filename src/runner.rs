@@ -86,7 +86,12 @@ impl Runner {
                     println!();
                     println!("Info:");
                     for (key, value) in self.info.iter() {
-                        println!("  {}: {}", key, value);
+                        if value.contains("\n") {
+                            let value2 = value.trim_end_matches(|v| v == '\n').replace("\n", "\n    ");
+                            println!("  {}: \n    {}", key, value2);
+                        } else {
+                            println!("  {}: {}", key, value);
+                        }
                     }
                 }
                 println!();

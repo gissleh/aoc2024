@@ -9,6 +9,21 @@ where
     default: T,
 }
 
+impl<C, S, T> Clone for Grid<C, S, T>
+where
+    C: GridCoordinate + Copy,
+    S: Clone,
+    T: Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            storage: self.storage.clone(),
+            size: self.size,
+            default: self.default.clone(),
+        }
+    }
+}
+
 impl<C, S, T> Grid<C, S, T>
 where
     C: GridCoordinate,
