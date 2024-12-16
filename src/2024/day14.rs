@@ -1,8 +1,8 @@
-use num::integer::lcm;
 use common::parser;
 use common::parser::Parser;
 use common::runner::Runner;
 use common::utils::crt;
+use num::integer::lcm;
 
 pub fn main(r: &mut Runner, input: &[u8]) {
     let robots = r.prep("Parse", || Robot::<101, 103>::parse_list(input));
@@ -53,10 +53,7 @@ fn part_2<const W: u32, const H: u32>(robots: &[Robot<W, H>]) -> u32 {
 
         if best_x.1 > 24 && best_y.1 > 24 {
             // CRT code I borrowed from Rosetta Code 3 years ago go brr.
-            return crt(&[
-                (best_x.0 as i64, W as i64),
-                (best_y.0 as i64, H as i64),
-            ]) as u32;
+            return crt(&[(best_x.0 as i64, W as i64), (best_y.0 as i64, H as i64)]) as u32;
         }
 
         #[cfg(debug_assertions)]
@@ -141,7 +138,10 @@ impl<const W: u32, const H: u32> Robot<W, H> {
                     .and_discard(b',')
                     .and(parser::int::<i32>()),
             )
-            .map(|(p, v): ((u32, u32), (i32, i32))| Robot { p, v: ((v.0 + W as i32) as u32 % W, (v.1 + H as i32) as u32 % H) })
+            .map(|(p, v): ((u32, u32), (i32, i32))| Robot {
+                p,
+                v: ((v.0 + W as i32) as u32 % W, (v.1 + H as i32) as u32 % H),
+            })
     }
 }
 
@@ -165,9 +165,11 @@ p=9,5 v=-3,-3
 
     #[test]
     fn robot_moves_correctly() {
-        let mut robot = Robot::<11, 7>::parser().parse_value(b"p=2,4 v=2,-3").unwrap();
+        let mut robot = Robot::<11, 7>::parser()
+            .parse_value(b"p=2,4 v=2,-3")
+            .unwrap();
         assert_eq!(robot.p, (2, 4));
-        assert_eq!(robot.v, (2, 7-3));
+        assert_eq!(robot.v, (2, 7 - 3));
 
         robot.run_move();
         assert_eq!(robot.p, (4, 1));
@@ -184,9 +186,11 @@ p=9,5 v=-3,-3
         robot.run_move();
         assert_eq!(robot.p, (1, 3));
 
-        let mut robot = Robot::<11, 7>::parser().parse_value(b"p=3,3 v=-3,-3").unwrap();
+        let mut robot = Robot::<11, 7>::parser()
+            .parse_value(b"p=3,3 v=-3,-3")
+            .unwrap();
         assert_eq!(robot.p, (3, 3));
-        assert_eq!(robot.v, (11-3, 7-3));
+        assert_eq!(robot.v, (11 - 3, 7 - 3));
 
         robot.run_move();
         assert_eq!(robot.p, (0, 0));
