@@ -14,7 +14,7 @@ use crate::search::attributes::Heuristic;
 use crate::utils::GatherTarget;
 pub use attributes::{Cost, Key, OnlyKey, KE};
 pub use order::Order;
-pub use seen::{NoSeenSpace, SeenSpace};
+pub use seen::{NoSeenSpace, ReEntrantSeenMap, SeenSpace};
 
 pub struct Search<S, SEEN, ORDER>
 where
@@ -50,9 +50,9 @@ where
         }
     }
 
-    pub fn find<F, T>(&mut self, f: F) -> Option<T>
+    pub fn find<F, T>(&mut self, mut f: F) -> Option<T>
     where
-        F: Fn(&mut Self, S) -> Option<T>,
+        F: FnMut(&mut Self, S) -> Option<T>,
     {
         while let Some(step) = self.order.next() {
             if let Some(res) = f(self, step) {
@@ -63,9 +63,9 @@ where
         None
     }
 
-    pub fn gather<G, F, T>(&mut self, f: F) -> G
+    pub fn gather<G, F, T>(&mut self, mut f: F) -> G
     where
-        F: Fn(&mut Self, S) -> Option<T>,
+        F: FnMut(&mut Self, S) -> Option<T>,
         G: GatherTarget<T>,
     {
         let mut target = G::init_gather_target(0);

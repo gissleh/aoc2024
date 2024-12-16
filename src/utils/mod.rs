@@ -1,5 +1,7 @@
-pub use gather::GatherTarget;
 pub use crt::crt;
+pub use direction::CardinalDirection;
+pub use gather::GatherTarget;
 
-mod gather;
 mod crt;
+mod direction;
+mod gather;

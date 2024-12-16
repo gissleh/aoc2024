@@ -1,4 +1,4 @@
-use super::{Cost, Key, Order, Search};
+use super::{Cost, Key};
 use crate::grid::{Grid, GridCoordinate};
 use bit_vec::BitVec;
 use num::Zero;
@@ -16,18 +16,6 @@ pub trait SeenSpace<S> {
     /// Try to mark something as seen, returning true only if it passes
     /// it.
     fn try_mark_seen(&mut self, state: S) -> bool;
-
-    fn with_order<ORDER>(self, order: ORDER) -> Search<S, Self, ORDER>
-    where
-        ORDER: Order<S>,
-        Self: Sized,
-    {
-        Search {
-            order,
-            seen: self,
-            spooky_ghost: Default::default(),
-        }
-    }
 }
 
 macro_rules! uint_bitset_space {
@@ -202,6 +190,58 @@ where
                 let state_cost = state.cost();
                 let existing_cost = e.get_mut();
                 if *existing_cost > state_cost {
+                    *existing_cost = state_cost;
+                    true
+                } else {
+                    false
+                }
+            }
+            Entry::Vacant(e) => {
+                e.insert(state.cost());
+                true
+            }
+        }
+    }
+}
+
+pub struct ReEntrantSeenMap<K, C> {
+    hash_map: FxHashMap<K, C>,
+}
+
+impl<K, C> ReEntrantSeenMap<K, C> {
+    pub fn with_capacity(cap: usize) -> Self {
+        Self {
+            hash_map: FxHashMap::with_capacity_and_hasher(cap, Default::default()),
+        }
+    }
+}
+
+impl<S, K, C> SeenSpace<S> for ReEntrantSeenMap<K, C>
+where
+    S: Key<K> + Cost<C>,
+    K: Hash + Eq,
+    C: Ord,
+{
+    #[inline]
+    fn reset(&mut self) {
+        self.hash_map.clear();
+    }
+
+    #[inline]
+    fn has_seen(&self, state: &S) -> bool {
+        match self.hash_map.get(&state.key()) {
+            Some(existing_cost) => state.cost() > *existing_cost,
+            None => false,
+        }
+    }
+
+    #[inline]
+    fn try_mark_seen(&mut self, state: S) -> bool {
+        match self.hash_map.entry(state.key()) {
+            Entry::Occupied(mut e) => {
+                let state_cost = state.cost();
+                let existing_cost = e.get_mut();
+                if *existing_cost >= state_cost {
                     *existing_cost = state_cost;
                     true
                 } else {
