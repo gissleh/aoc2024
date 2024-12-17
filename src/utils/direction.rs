@@ -11,6 +11,13 @@ pub enum CardinalDirection {
 }
 
 impl CardinalDirection {
+    pub const NWES: [CardinalDirection; 4] = [
+        CardinalDirection::North,
+        CardinalDirection::East,
+        CardinalDirection::West,
+        CardinalDirection::South,
+    ];
+
     /// Get a bit that's unique to the direction, in clockwise order from west to south.
     pub fn to_bits(&self) -> u8 {
         match *self {
@@ -53,6 +60,16 @@ impl CardinalDirection {
             CardinalDirection::North => CardinalDirection::East,
             CardinalDirection::East => CardinalDirection::South,
             CardinalDirection::South => CardinalDirection::West,
+        }
+    }
+
+    /// Turn with the clock
+    pub fn turn_around(&self) -> CardinalDirection {
+        match self {
+            CardinalDirection::West => CardinalDirection::East,
+            CardinalDirection::North => CardinalDirection::South,
+            CardinalDirection::East => CardinalDirection::West,
+            CardinalDirection::South => CardinalDirection::North,
         }
     }
 }

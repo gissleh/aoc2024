@@ -1,15 +1,16 @@
 use arrayvec::ArrayVec;
 use common::graph::Graph;
 use common::grid::Grid;
+use common::point::CardinalNeighbors;
 use common::runner::{BothParts, Runner};
-use common::search::{bfs, dijkstra, Cost, Key, Order, ReEntrantSeenMap};
+use common::search::{dfs, dijkstra, Cost, Key, Order, ReEntrantSeenMap};
 use common::utils::CardinalDirection;
 use rustc_hash::{FxHashMap, FxHashSet};
 use std::cmp::minmax;
-use std::collections::HashSet;
 
 const WALL: u8 = b'#';
 const OPEN: u8 = b'.';
+const JUNCTION: u8 = b'X';
 
 pub fn main(r: &mut Runner, input: &[u8]) {
     let maze = r.prep("Parse", || Maze::parse(input));
@@ -125,240 +126,281 @@ fn both_parts(maze: &Maze) -> BothParts<u32, u32> {
     BothParts(scores_and_turns[0].0, seen_tiles.len() as u32)
 }
 
-type MazeGraph = Graph<((u8, u8), CardinalDirection), u32, 6>;
+type MazeGraph = Graph<(u8, u8), (u32, CardinalDirection, CardinalDirection), 4>;
 
 fn build_graph(maze: &Maze) -> MazeGraph {
-    let mut search = dijkstra().with_seen_space(FxHashMap::with_capacity_and_hasher(
-        1024,
-        Default::default(),
-    ));
-    search.push(GraphBuildStep {
-        pos: maze.start_pos,
-        last_intersection: maze.start_pos,
-        last_direction: CardinalDirection::East,
+    let mut search = dfs().without_seen_space();
+    let mut grid = maze.grid.clone();
+    let mut junctions = Vec::with_capacity(64);
+    let (w, h) = *grid.size();
+
+    for y in 1..h - 1 {
+        for x in 1..w - 1 {
+            if (x, y) == maze.start_pos || (x, y) == maze.end_pos {
+                grid[(x, y)] = JUNCTION;
+                junctions.push((x, y));
+                continue;
+            }
+
+            let c = grid[(x, y)];
+            if c == WALL {
+                continue;
+            }
+
+            let open_count = (x, y)
+                .cardinal_neighbors()
+                .iter()
+                .filter(|n| grid[**n] != WALL)
+                .count();
+            if open_count > 2 {
+                grid[(x, y)] = JUNCTION;
+                junctions.push((x, y));
+            }
+        }
+    }
+
+    let mut graph = MazeGraph::with_capacity(junctions.len());
+    for (x, y) in junctions {
+        let a = graph.ensure_node((x, y));
+
+        for init_dir in CardinalDirection::NWES {
+            search.reset();
+            search.push(((x, y), init_dir, 0u32));
+            let first_next_pos = init_dir.next_pos(&(x, y));
+            if grid[first_next_pos] == WALL {
+                continue;
+            }
+
+            let res = search.find(|search, (pos, dir, score)| {
+                let next_pos = dir.next_pos(&pos);
+                let cell = grid[next_pos];
+
+                match cell {
+                    JUNCTION => Some((next_pos, dir, score + 1)),
+                    OPEN => {
+                        search.push((next_pos, dir, score + 1));
+                        None
+                    }
+                    WALL => {
+                        let left_dir = dir.turn_anticlockwise();
+                        let next_pos_left = left_dir.next_pos(&pos);
+                        match grid[next_pos_left] {
+                            JUNCTION => Some((next_pos_left, left_dir, score + 1001)),
+                            WALL => {
+                                let right_dir = dir.turn_clockwise();
+                                let next_pos_right = right_dir.next_pos(&pos);
+                                match grid[next_pos_right] {
+                                    JUNCTION => Some((next_pos_right, right_dir, score + 1001)),
+                                    WALL => None,
+                                    OPEN => {
+                                        search.push((next_pos_right, right_dir, score + 1001));
+                                        None
+                                    }
+                                    _ => unreachable!(),
+                                }
+                            }
+                            OPEN => {
+                                search.push((next_pos_left, left_dir, score + 1001));
+                                None
+                            }
+                            _ => unreachable!(),
+                        }
+                    }
+                    _ => unreachable!(),
+                }
+            });
+
+            if let Some((pos, new_dir, score)) = res {
+                let b = graph.ensure_node(pos);
+                graph.connect(a, b, (score, init_dir, new_dir));
+
+                #[cfg(test)]
+                println!("({x}, {y}) --{init_dir:?}--{new_dir:?}--> {pos:?}: {score}");
+            }
+        }
+    }
+
+    graph
+}
+
+fn part_1_graph(maze: &Maze, graph: &MazeGraph) -> u32 {
+    let mut search =
+        dijkstra().with_seen_space(FxHashMap::with_capacity_and_hasher(64, Default::default()));
+    search.push(GraphedReindeerP1 {
+        index: graph.node_index(&maze.start_pos).unwrap(),
         direction: CardinalDirection::East,
         score: 0,
-        last_score: 0,
+    });
+
+    let end_index = graph.node_index(&maze.end_pos).unwrap();
+
+    search
+        .find(
+            |search,
+             GraphedReindeerP1 {
+                 index,
+                 direction,
+                 score,
+             }| {
+                if index == end_index {
+                    return Some(score);
+                }
+
+                let dir_back = direction.turn_around();
+
+                for (next_index, (cost, exit_dir, enter_dir)) in graph.edges(index) {
+                    if *exit_dir == direction {
+                        search.push(GraphedReindeerP1 {
+                            index: *next_index,
+                            direction: *enter_dir,
+                            score: score + *cost,
+                        });
+                    } else if *exit_dir != dir_back {
+                        search.push(GraphedReindeerP1 {
+                            index: *next_index,
+                            direction: *enter_dir,
+                            score: score + 1000 + *cost,
+                        });
+                    }
+                }
+
+                None
+            },
+        )
+        .unwrap()
+}
+
+#[derive(Clone, Copy, Debug)]
+struct GraphedReindeerP1 {
+    index: usize,
+    direction: CardinalDirection,
+    score: u32,
+}
+
+impl Cost<u32> for GraphedReindeerP1 {
+    fn cost(&self) -> u32 {
+        self.score
+    }
+}
+
+impl Key<(usize, CardinalDirection)> for GraphedReindeerP1 {
+    fn key(&self) -> (usize, CardinalDirection) {
+        (self.index, self.direction)
+    }
+}
+
+fn part_2_graph(maze: &Maze, graph: &MazeGraph) -> u32 {
+    let mut search = dijkstra().with_seen_space(ReEntrantSeenMap::with_capacity(64));
+    let start_index = graph.node_index(&maze.start_pos).unwrap();
+    let end_index = graph.node_index(&maze.end_pos).unwrap();
+
+    search.push(GraphedReindeerP2 {
+        index: start_index,
+        direction: CardinalDirection::East,
+        score: 0,
+        traced_path: [(0u16, 0u16); 192],
+        traced_path_len: 0,
     });
 
     let mut max_score = 0;
 
-    search.fold(
-        MazeGraph::with_capacity(192),
+    let map = search.fold(
+        FxHashMap::<(u16, u16), u32>::with_capacity_and_hasher(128, Default::default()),
         |search,
-         GraphBuildStep {
-             pos,
-             last_intersection,
-             last_direction,
+         GraphedReindeerP2 {
+             index,
              direction,
              score,
-             last_score,
+             traced_path,
+             traced_path_len,
          }| {
-            if max_score != 0 && score > max_score {
+            if max_score > 0 && score > max_score {
                 return None;
             }
 
-            if pos == maze.end_pos {
+            #[cfg(test)]
+            println!("At {:?} with {score}", graph.node(index));
+
+            if index == end_index {
                 max_score = score;
-
-                return Some((
-                    last_intersection,
-                    pos,
-                    last_direction,
-                    direction,
-                    score - last_score,
-                ));
+                return Some((traced_path, traced_path_len));
             }
 
-            let directions = [
-                direction,
-                direction.turn_clockwise(),
-                direction.turn_anticlockwise(),
-            ];
+            let dir_back = direction.turn_around();
 
-            let open = directions.map(|dir| maze.grid[dir.next_pos(&pos)] == OPEN);
-            let open_count = open.iter().filter(|v| **v).count();
-
-            let (last_score, last_intersection) = if open_count > 1 {
-                (score,
-                pos)
-            } else {
-                (last_score,
-                last_intersection)
-            };
-
-            for (i, next_direction) in directions.iter().enumerate() {
-                let next_pos = next_direction.next_pos(&pos);
-                if open[i] {
-                    let next_score = if *next_direction != direction {
-                        score + 1001
-                    } else {
-                        score + 1
-                    };
-
-                    //search.push((next_pos, last_intersection, next_score, next_score, last_score));
-                    search.push(GraphBuildStep {
-                        pos: next_pos,
-                        direction: *next_direction,
-                        score: next_score,
-                        last_score,
-                        last_intersection,
-                        last_direction: if open_count > 1 { *next_direction } else { last_direction },
-                    });
+            for (next_index, (cost, exit_dir, enter_dir)) in graph.edges(index) {
+                if *exit_dir == dir_back {
+                    continue;
                 }
-            }
 
-            // If it's about to reach a split
-            let next_pos = direction.next_pos(&pos);
-            if score != last_score && maze.grid[next_pos] == OPEN {
-                let open = directions.map(|dir| maze.grid[dir.next_pos(&next_pos)] == OPEN);
-                if open.iter().filter(|o| **o).count() > 1 {
-                    if score == last_score {
-                        return None;
-                    }
+                let next_score = if direction != *exit_dir {
+                    1000 + score + cost
+                } else {
+                    score + cost
+                };
 
-                    return Some((
-                        last_intersection,
-                        next_pos,
-                        last_direction,
-                        direction,
-                        score - last_score,
-                    ));
-                }
+                let mut next_traced_path = traced_path;
+                next_traced_path[traced_path_len as usize] =
+                    (*next_index as u16, ((cost % 1000) - 1) as u16);
+
+                search.push(GraphedReindeerP2 {
+                    index: *next_index,
+                    direction: *enter_dir,
+                    score: next_score,
+                    traced_path: next_traced_path,
+                    traced_path_len: traced_path_len + 1,
+                });
             }
 
             None
         },
-        |mut graph, (pos_a, pos_b, dir_a, dir_b, cost)| {
+        |mut map, (res, res_len)| {
             #[cfg(test)]
-            println!("{pos_a:?}({dir_a:?}) -> {pos_b:?}({dir_b:?}) {cost}");
+            println!("Path:");
+            let mut prev = start_index as u16;
+            for (index, score) in &res[..res_len as usize] {
+                #[cfg(test)]
+                println!(
+                    "{:?}->{:?}",
+                    graph.node(prev as usize),
+                    graph.node(*index as usize)
+                );
 
-            let a = graph.ensure_node((pos_a, dir_a));
-            let b = graph.ensure_node((pos_b, dir_b));
-
-            if graph.edge(a, b).is_none() {
-                graph.connect(a, b, cost);
+                map.insert((prev, *index), *score as u32);
+                prev = *index;
             }
 
-            if graph.edges(a).len() == 1 {
-                let al = graph.ensure_node((pos_a, dir_a.turn_anticlockwise()));
-                let ar = graph.ensure_node((pos_a, dir_a.turn_clockwise()));
-                graph.connect(a, al, 1000);
-                graph.connect(a, ar, 1000);
-            }
-
-            if graph.edges(b).len() == 0 {
-                let bl = graph.ensure_node((pos_b, dir_b.turn_anticlockwise()));
-                let br = graph.ensure_node((pos_b, dir_b.turn_clockwise()));
-                graph.connect(b, bl, 1000);
-                graph.connect(b, br, 1000);
-            }
-
-            graph
+            map
         },
-    )
+    );
+
+    let mut unique_points = FxHashSet::with_capacity_and_hasher(map.len(), Default::default());
+    for (a, b) in map.keys() {
+        unique_points.insert(*a);
+        unique_points.insert(*b);
+    }
+
+    unique_points.len() as u32 + map.values().sum::<u32>()
 }
 
-fn part_1_graph(maze: &Maze, graph: &MazeGraph) -> u32 {
-    let mut search = dijkstra().with_seen_space(vec![0u32; graph.len()]);
-    search.push((
-        graph
-            .node_index(&(maze.start_pos, CardinalDirection::East))
-            .unwrap(),
-        1,
-    ));
-
-    search
-        .find(|search, (index, score)| {
-            if graph.node(index).0 == maze.end_pos {
-                return Some(score);
-            }
-
-            for (next_index, cost) in graph.edges(index) {
-                search.push((*next_index, *cost + score));
-            }
-
-            None
-        })
-        .unwrap() - 1
-}
-
-fn part_2_graph(maze: &Maze, graph: &MazeGraph) -> u32 {
-    let mut search = dijkstra().with_seen_space(ReEntrantSeenMap::with_capacity(256));
-    search.push(GraphedReindeer{
-        index: graph.node_index(&(maze.start_pos, CardinalDirection::East)).unwrap(),
-        traced_path: [0; 192],
-        traced_path_len: 0,
-        score: 1,
-    });
-    let start_index = graph.node_index(&(maze.start_pos, CardinalDirection::East)).unwrap() as u16;
-
-    let mut best_score = 0;
-
-    search.fold(HashSet::with_capacity(64), move |search, r| {
-        if best_score != 0 && r.score > best_score {
-            return None;
-        }
-
-        if graph.node(r.index).0 == maze.end_pos {
-            best_score = r.score;
-
-            return Some(ArrayVec::from_iter(r.traced_path[..r.traced_path_len as usize]
-                .iter()
-                .copied()));
-        }
-
-        for (next_index, cost) in graph.edges(r.index) {
-            let mut next_traced_path = r.traced_path;
-            let mut next_traced_path_len = r.traced_path_len;
-            next_traced_path[r.traced_path_len as usize] = *next_index as u16;
-            next_traced_path_len += 1;
-
-            search.push(GraphedReindeer{
-                index: *next_index,
-                score: r.score + *cost,
-                traced_path: next_traced_path,
-                traced_path_len: next_traced_path_len,
-            });
-        }
-
-        None
-    }, |mut seen_segments, path: ArrayVec<_, 192>| {
-        let mut prev = start_index;
-        #[cfg(test)]
-        println!("{path:?}");
-
-        for pos in path.iter() {
-            #[cfg(test)]
-            println!("{prev} -> {pos}: {}", *graph.edge(prev as usize, *pos as usize).unwrap() % 1000);
-
-            seen_segments.insert((prev, *pos));
-            prev = *pos;
-        }
-
-        seen_segments
-    }).iter().map(|(a, b)| *graph.edge(*a as usize, *b as usize).unwrap() % 1000).sum::<u32>()
-}
-
-#[derive(Clone, Copy)]
-struct GraphBuildStep {
-    pos: (u8, u8),
-    last_intersection: (u8, u8),
-    last_direction: CardinalDirection,
+#[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
+struct GraphedReindeerP2 {
+    index: usize,
     direction: CardinalDirection,
     score: u32,
-    last_score: u32,
+    traced_path: [(u16, u16); 192],
+    traced_path_len: u32,
 }
 
-impl Key<(u8, u8, CardinalDirection)> for GraphBuildStep {
-    fn key(&self) -> (u8, u8, CardinalDirection) {
-        (self.pos.0, self.pos.1, self.direction)
+impl Cost<u32> for GraphedReindeerP2 {
+    fn cost(&self) -> u32 {
+        self.score
     }
 }
 
-impl Cost<u32> for GraphBuildStep {
-    fn cost(&self) -> u32 {
-        self.score
+impl Key<(usize, CardinalDirection)> for GraphedReindeerP2 {
+    fn key(&self) -> (usize, CardinalDirection) {
+        (self.index, self.direction)
     }
 }
 
@@ -437,25 +479,6 @@ impl Key<(u8, u8, CardinalDirection)> for Reindeer {
     }
 }
 
-#[derive(Eq, PartialEq, Hash, Copy, Clone, Debug)]
-struct GraphedReindeer {
-    index: usize,
-    score: u32,
-    traced_path: [u16; 192],
-    traced_path_len: u32,
-}
-
-impl Cost<u32> for GraphedReindeer {
-    fn cost(&self) -> u32 {
-        self.score
-    }
-}
-
-impl Key<usize> for GraphedReindeer {
-    fn key(&self) -> usize {
-        self.index
-    }
-}
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -504,59 +527,6 @@ mod tests {
     }
 
     #[test]
-    fn build_graph_works_on_example_1() {
-        let maze = Maze::parse(EXAMPLE_1);
-        let graph = build_graph(&maze);
-
-        println!("{:?}", graph.edges(0));
-
-        assert_eq!(
-            graph.edge(
-                graph
-                    .node_index(&((9, 7), CardinalDirection::East))
-                    .unwrap(),
-                graph
-                    .node_index(&((9, 7), CardinalDirection::North))
-                    .unwrap(),
-            ),
-            Some(&1000)
-        );
-        assert_eq!(
-            graph.edge(
-                graph
-                    .node_index(&((9, 7), CardinalDirection::North))
-                    .unwrap(),
-                graph
-                    .node_index(&((9, 5), CardinalDirection::North))
-                    .unwrap(),
-            ),
-            Some(&2)
-        );
-        assert_eq!(
-            graph.edge(
-                graph
-                    .node_index(&((9, 5), CardinalDirection::North))
-                    .unwrap(),
-                graph
-                    .node_index(&((9, 5), CardinalDirection::East))
-                    .unwrap(),
-            ),
-            Some(&1000)
-        );
-        assert_eq!(
-            graph.edge(
-                graph
-                    .node_index(&((9, 5), CardinalDirection::East))
-                    .unwrap(),
-                graph
-                    .node_index(&((13, 1), CardinalDirection::East))
-                    .unwrap(),
-            ),
-            Some(&4012)
-        );
-    }
-
-    #[test]
     fn part_1_graph_works_on_example_1() {
         let maze = Maze::parse(EXAMPLE_1);
         let graph = build_graph(&maze);
@@ -587,7 +557,6 @@ mod tests {
 
         assert_eq!(part_2_graph(&maze, &graph), 64);
     }
-
 
     #[test]
     fn both_parts_works_on_example_2() {
