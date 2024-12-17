@@ -4,7 +4,6 @@ pub struct Graph<N, E, const CAP: usize> {
     nodes: Vec<N>,
     edges: Vec<ArrayVec<(usize, E), CAP>>,
 }
-
 impl<N, E, const CAP: usize> Graph<N, E, CAP>
 where
     N: Eq,
@@ -29,6 +28,7 @@ where
             Some(index) => index,
             None => {
                 self.nodes.push(node);
+                self.edges.push(ArrayVec::new());
                 self.nodes.len() - 1
             }
         }
@@ -40,18 +40,22 @@ where
         self.nodes.len() - 1
     }
 
+    #[inline]
     pub fn node(&self, index: usize) -> &N {
         &self.nodes[index]
     }
 
+    #[inline]
     pub fn node_mut(&mut self, index: usize) -> &mut N {
         &mut self.nodes[index]
     }
 
+    #[inline]
     pub fn node_index(&self, node: &N) -> Option<usize> {
         self.nodes.iter().position(|n| n == node)
     }
 
+    #[inline]
     pub fn node_index_by_ref<K>(&self, key: &K) -> Option<usize>
     where
         K: Ord + ?Sized,
@@ -60,6 +64,7 @@ where
         self.nodes.iter().position(|n| n.as_ref() == key)
     }
 
+    #[inline]
     pub fn nodes(&self) -> &[N] {
         &self.nodes
     }
@@ -73,12 +78,27 @@ where
         })
     }
 
+    #[inline]
     pub fn connect(&mut self, src: usize, dst: usize, edge: E) {
         self.edges[src].push((dst, edge));
     }
 
+    #[inline]
     pub fn edges(&self, src: usize) -> &[(usize, E)] {
         self.edges[src].as_slice()
+    }
+
+    #[inline]
+    pub fn edge(&self, src: usize, dst: usize) -> Option<&E> {
+        self.edges[src]
+            .iter()
+            .find(|(d, _)| *d == dst)
+            .map(|(_, e)| e)
+    }
+
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.nodes.len()
     }
 }
 

@@ -80,9 +80,9 @@ where
         target
     }
 
-    pub fn fold<F, T, FR, FF>(&mut self, init: FR, search_fn: F, fold_fn: FF) -> FR
+    pub fn fold<F, T, FR, FF>(&mut self, init: FR, mut search_fn: F, fold_fn: FF) -> FR
     where
-        F: Fn(&mut Self, S) -> Option<T>,
+        F: FnMut(&mut Self, S) -> Option<T>,
         FF: Fn(FR, T) -> FR,
     {
         let mut fold_res = init;
