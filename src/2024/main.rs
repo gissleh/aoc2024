@@ -19,6 +19,7 @@ mod day14;
 mod day15;
 mod day16;
 mod day17;
+mod day18;
 
 use common::runner::run;
 
@@ -40,7 +41,7 @@ fn main() {
     run(2024, 15, day15::main);
     run(2024, 16, day16::main);
     run(2024, 17, day17::main);
-    //run(2024, 18, day18::main);
+    run(2024, 18, day18::main);
     //run(2024, 19, day19::main);
     //run(2024, 20, day20::main);
     //run(2024, 21, day21::main);
