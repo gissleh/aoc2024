@@ -69,13 +69,12 @@ impl PageOrdering {
     fn parser<'i>() -> impl Parser<'i, Self> {
         parser::uint::<usize>()
             .and_discard(b'|')
-            .and(parser::uint::<usize>())
+            .and(parser::uint::<u8>())
             .delimited_by(b'\n')
-            .repeat_fold(
+            .repeat_fold_mut(
                 || PageOrdering([0; 100]),
-                |mut c, (a, b)| {
-                    c.0[a] |= U128_BITS[b];
-                    c
+                |c, (a, b)| {
+                    c.0[a] |= 1 << b;
                 },
             )
             .and_discard(b"\n\n")
