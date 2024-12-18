@@ -15,7 +15,7 @@ use crate::parser::delimiter::DelimitedBy;
 use crate::parser::extract::Extract;
 use crate::parser::map::Map;
 use crate::parser::or::Or;
-use crate::parser::repeat::{Repeat, RepeatFold};
+use crate::parser::repeat::{Repeat, RepeatFold, RepeatFoldMut};
 use crate::parser::rewind::Rewind;
 use crate::parser::within::{QuotedBy, Within};
 use crate::utils::GatherTarget;
@@ -159,6 +159,21 @@ pub trait Parser<'i, T>: Sized {
         FF: Fn(TO, T) -> TO,
     {
         RepeatFold::new(self, init_f, fold_f)
+    }
+
+    /// Repeat with a fold-like callback, except it borrows the object instead of moving it into the callback.
+    /// Useful for when the fold state is massive.
+    #[inline]
+    fn repeat_fold_mut<TO, FI, FF>(
+        self,
+        init_f: FI,
+        fold_f: FF,
+    ) -> RepeatFoldMut<T, TO, Self, FI, FF>
+    where
+        FI: Fn() -> TO,
+        FF: Fn(&mut TO, T),
+    {
+        RepeatFoldMut::new(self, init_f, fold_f)
     }
 
     /// Parse within an outer parser, requires that the inner parser is exhausting.

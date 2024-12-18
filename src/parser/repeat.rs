@@ -134,3 +134,45 @@ where
         }
     }
 }
+
+pub struct RepeatFoldMut<TI, TO, P, FI, FF> {
+    parser: P,
+    init_f: FI,
+    fold_f: FF,
+    spooky_ghost: PhantomData<(TI, TO)>,
+}
+
+impl<TI, TO, P, FI, FF> RepeatFoldMut<TI, TO, P, FI, FF> {
+    pub fn new(parser: P, init_f: FI, fold_f: FF) -> Self {
+        Self {
+            parser,
+            init_f,
+            fold_f,
+            spooky_ghost: Default::default(),
+        }
+    }
+}
+
+impl<'i, TI, TO, P, FI, FF> Parser<'i, TO> for RepeatFoldMut<TI, TO, P, FI, FF>
+where
+    P: Parser<'i, TI>,
+    FI: Fn() -> TO,
+    FF: Fn(&mut TO, TI),
+{
+    fn parse(&self, input: &'i [u8]) -> Option<(TO, &'i [u8])> {
+        if let Some((res, input)) = self.parser.parse_first(input) {
+            let mut state = (self.init_f)();
+            (self.fold_f)(&mut state, res);
+
+            let mut input = input;
+            while let Some((res, next)) = self.parser.parse(input) {
+                (self.fold_f)(&mut state, res);
+                input = next;
+            }
+
+            Some((state, input))
+        } else {
+            None
+        }
+    }
+}

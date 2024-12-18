@@ -15,7 +15,7 @@ pub fn main(r: &mut Runner, input: &[u8]) {
     r.part("Part 1", || part_1(&grid, 1024).unwrap());
     r.part("Part 2", || part_2(&grid, max_byte));
 
-    r.info("Bytes", &grid.iter().map(|(_, v)| *v).max().unwrap());
+    r.info("Bytes", &max_byte);
 }
 
 fn part_1(grid: &ByteGrid, limit: u16) -> Option<u32> {
@@ -49,7 +49,7 @@ fn part_1(grid: &ByteGrid, limit: u16) -> Option<u32> {
 }
 
 fn part_2(grid: &ByteGrid, max_byte: u16) -> String {
-    let mut step_size = (max_byte-1024)/2;
+    let mut step_size = (max_byte - 1024) / 2;
     let mut current = 1024 + step_size;
 
     step_size /= 2;
@@ -84,11 +84,11 @@ fn parser<'i>(w: u8, h: u8) -> impl Parser<'i, (ByteGrid, u16)> {
         .and_discard(b',')
         .and(parser::uint::<u8>())
         .and_discard(b'\n')
-        .repeat_fold(
+        .repeat_fold_mut(
             move || (ByteGrid::new_with_default((w, h), [0u16; 71 * 71], 0), 1u16),
-            |(mut grid, next), (x, y)| {
-                grid[(x, y)] = next;
-                (grid, next + 1)
+            |(grid, next), (x, y)| {
+                grid[(x, y)] = *next;
+                *next += 1;
             },
         )
         .map(|(grid, next)| (grid, next - 1))
