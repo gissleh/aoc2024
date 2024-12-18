@@ -10,10 +10,10 @@ const END: (u8, u8) = (70, 70);
 type ByteGrid = Grid<(u8, u8), [u16; 71 * 71], u16>;
 
 pub fn main(r: &mut Runner, input: &[u8]) {
-    let grid = r.prep("Parse", || parser(71, 71).parse_value(input).unwrap());
+    let (grid, max_byte) = r.prep("Parse", || parser(71, 71).parse_value(input).unwrap());
 
     r.part("Part 1", || part_1(&grid, 1024).unwrap());
-    r.part("Part 2", || part_2(&grid));
+    r.part("Part 2", || part_2(&grid, max_byte));
 
     r.info("Bytes", &grid.iter().map(|(_, v)| *v).max().unwrap());
 }
@@ -48,23 +48,38 @@ fn part_1(grid: &ByteGrid, limit: u16) -> Option<u32> {
     })
 }
 
-fn part_2(grid: &ByteGrid) -> String {
-    for limit in 1025..u16::MAX {
-        if part_1(&grid, limit).is_none() {
-            let (x, y) = grid
-                .iter()
-                .find(|(_, cell)| **cell == limit)
-                .map(|((x, y), _)| (x, y))
-                .unwrap();
+fn part_2(grid: &ByteGrid, max_byte: u16) -> String {
+    let mut step_size = (max_byte-1024)/2;
+    let mut current = 1024 + step_size;
 
-            return format!("{},{}", x, y);
+    step_size /= 2;
+
+    while current > 1024 && current < max_byte {
+        if part_1(&grid, current).is_none() {
+            if step_size == 1 {
+                let (x, y) = grid
+                    .iter()
+                    .find(|(_, cell)| **cell == current)
+                    .map(|((x, y), _)| (x, y))
+                    .unwrap();
+
+                return format!("{},{}", x, y);
+            } else {
+                current -= step_size;
+            }
+        } else {
+            current += step_size;
+        }
+
+        if step_size > 1 {
+            step_size /= 2;
         }
     }
 
     ":(".to_owned()
 }
 
-fn parser<'i>(w: u8, h: u8) -> impl Parser<'i, ByteGrid> {
+fn parser<'i>(w: u8, h: u8) -> impl Parser<'i, (ByteGrid, u16)> {
     parser::uint::<u8>()
         .and_discard(b',')
         .and(parser::uint::<u8>())
@@ -76,7 +91,7 @@ fn parser<'i>(w: u8, h: u8) -> impl Parser<'i, ByteGrid> {
                 (grid, next + 1)
             },
         )
-        .map(|(grid, _)| grid)
+        .map(|(grid, next)| (grid, next - 1))
 }
 
 struct SeenGrid {
