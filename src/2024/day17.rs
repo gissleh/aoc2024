@@ -44,7 +44,8 @@ fn part_2(program: &[u8], registers: [u64; 3]) -> u64 {
         8u64.pow(program.len() as u32 - 1),
         program.len() - 1,
         program,
-        registers,
+        registers[1],
+        registers[2],
         &mut output_buffer,
     )
     .unwrap()
@@ -55,34 +56,34 @@ fn part_2_step(
     step_size: u64,
     probe_start: usize,
     program: &[u8],
-    registers: [u64; 3],
+    b: u64,
+    c: u64,
     output_buffer: &mut Vec<u8>,
 ) -> Option<u64> {
-    let mut lowest = None;
-    let mut registers = registers;
+    (0..8)
+        .map(|n| a - (step_size * n))
+        .filter_map(|a| {
+            run_program_with(program, [a, b, c], output_buffer);
 
-    for n in 0..8 {
-        let a = a - (step_size * n);
-        registers[0] = a;
-        run_program_with(program, registers, output_buffer);
-
-        if program[probe_start..] == output_buffer[probe_start..] {
-            if probe_start == 0 {
-                lowest = lowest_of(lowest, a);
-            } else if let Some(result) = part_2_step(
-                a,
-                step_size / 8,
-                probe_start - 1,
-                program,
-                registers,
-                output_buffer,
-            ) {
-                lowest = lowest_of(lowest, result);
+            if program[probe_start..] == output_buffer[probe_start..] {
+                if probe_start == 0 {
+                    Some(a)
+                } else {
+                    part_2_step(
+                        a,
+                        step_size >> 3,
+                        probe_start - 1,
+                        program,
+                        b,
+                        c,
+                        output_buffer,
+                    )
+                }
+            } else {
+                None
             }
-        }
-    }
-
-    lowest
+        })
+        .min()
 }
 
 fn parser<'i>() -> impl Parser<'i, (Vec<u8>, [u64; 3])> {
@@ -114,7 +115,7 @@ fn run_program_with(program: &[u8], registers: [u64; 3], output: &mut Vec<u8>) -
         match program[pc] {
             ADV => {
                 registers[0] =
-                    registers[0] / 2_u64.pow(combo_operand(program[pc + 1], registers) as u32);
+                    registers[0] / (1 << combo_operand(program[pc + 1], registers) as u32);
                 pc += 2;
             }
             BXL => {
@@ -137,17 +138,17 @@ fn run_program_with(program: &[u8], registers: [u64; 3], output: &mut Vec<u8>) -
                 pc += 2;
             }
             OUT => {
-                output.push((combo_operand(program[pc + 1], registers) % 8) as u8);
+                output.push(combo_operand(program[pc + 1], registers) as u8 % 8);
                 pc += 2;
             }
             BDV => {
                 registers[1] =
-                    registers[0] / 2_u64.pow(combo_operand(program[pc + 1], registers) as u32);
+                    registers[0] / (1 << combo_operand(program[pc + 1], registers) as u32);
                 pc += 2;
             }
             CDV => {
                 registers[2] =
-                    registers[0] / 2_u64.pow(combo_operand(program[pc + 1], registers) as u32);
+                    registers[0] / (1 << combo_operand(program[pc + 1], registers) as u32);
                 pc += 2;
             }
             _ => unreachable!(),
@@ -210,19 +211,6 @@ fn combo_operand_name(code: u8) -> char {
 
 fn real_operand_name(code: u8) -> char {
     (code + b'0') as char
-}
-
-fn lowest_of<T: Ord>(old: Option<T>, new: T) -> Option<T> {
-    match old {
-        Some(old) => {
-            if new < old {
-                Some(new)
-            } else {
-                Some(old)
-            }
-        }
-        None => Some(new),
-    }
 }
 
 #[cfg(test)]
