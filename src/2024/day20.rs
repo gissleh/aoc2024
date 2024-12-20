@@ -2,6 +2,7 @@ use common::grid::{Grid, GridCoordinate};
 use common::point::{CardinalNeighbors, CardinalNeighborsWrapping, ManhattanDistance};
 use common::runner::Runner;
 use common::search::{bfs, Order};
+use rayon::prelude::*;
 use rustc_hash::FxHashSet;
 
 const WALL: u16 = u16::MAX;
@@ -133,26 +134,25 @@ impl Maze {
             .map(|((x, y), v)| ((x as u16, y as u16), *v))
             .collect();
 
-        let mut count = 0;
+        positions
+            .par_iter()
+            .map(|(ap, ad)| {
+                positions
+                    .iter()
+                    .take_while(|((_, y), _)| *y <= ap.1 + 20)
+                    .filter(|(bp, bd)| {
+                        if *bd >= *ad || ap.1 > bp.1 + 20 {
+                            return false;
+                        }
 
-        for (ap, ad) in positions.iter() {
-            for (bp, bd) in positions.iter() {
-                if *bd >= *ad || ap.1 > bp.1 + 20 {
-                    continue;
-                }
-                if bp.1 > ap.1 + 20 {
-                    break;
-                }
+                        let cheat_gain = *ad - *bd;
+                        let cheat_distance = ap.manhattan_distance_to(bp);
 
-                let cheat_gain = *ad - *bd;
-                let cheat_distance = ap.manhattan_distance_to(bp);
-                if cheat_distance <= 20 && cheat_gain - cheat_distance >= min {
-                    count += 1;
-                }
-            }
-        }
-
-        count
+                        cheat_distance <= 20 && cheat_gain - cheat_distance >= min
+                    })
+                    .count()
+            })
+            .sum::<usize>()
     }
 
     fn with_distances(&self) -> Self {
