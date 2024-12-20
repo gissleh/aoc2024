@@ -151,6 +151,16 @@ where
     }
 }
 
+impl<C, T> Grid<C, Vec<T>, T>
+where
+    C: GridCoordinate,
+    T: Copy,
+{
+    pub fn new_vec_initial(size: C, initial_value: T) -> Self {
+        Self::new_with_default(size, vec![initial_value; size.area()], initial_value)
+    }
+}
+
 struct GridIter<'g, C, T> {
     coord: C,
     size: C,

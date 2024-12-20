@@ -1,8 +1,11 @@
+use arrayvec::ArrayVec;
+use bit_vec::BitVec;
 use common::grid::{Grid, GridCoordinate};
 use common::parser;
 use common::parser::Parser;
 use common::runner::Runner;
-use common::search::{bfs, Key, Order, SeenSpace};
+use common::search::{bfs, Key, Order, Search, SeenSpace};
+use common::utils::UnionFind;
 
 const START: (u8, u8) = (0, 0);
 const END: (u8, u8) = (70, 70);
@@ -10,18 +13,31 @@ const END: (u8, u8) = (70, 70);
 type ByteGrid = Grid<(u8, u8), [u16; 71 * 71], u16>;
 
 pub fn main(r: &mut Runner, input: &[u8]) {
-    let (grid, max_byte) = r.prep("Parse", || parser(71, 71).parse_value(input).unwrap());
+    let (grid, points) = r.prep("Parse", || parser(71, 71).parse_value(input).unwrap());
 
-    r.part("Part 1", || part_1(&grid, 1024).unwrap());
-    r.part("Part 2", || part_2(&grid, max_byte));
+    r.part("Part 1", || part_1(&grid));
+    r.part("Part 2", || part_2(&grid, points.len() as u16));
 
-    r.info("Bytes", &max_byte);
+    r.set_tail("Part 1");
+    r.part("Part 2 (Union Set)", || {
+        part_2_union_find(*grid.size(), &points)
+    });
+
+    r.info("Bytes", &points.len());
 }
 
-fn part_1(grid: &ByteGrid, limit: u16) -> Option<u32> {
+fn part_1(grid: &ByteGrid) -> u32 {
     let mut search = bfs().with_seen_space(SeenGrid::new());
-    search.push((START, 0));
+    run_pathfinding(grid, 1024, &mut search).unwrap()
+}
 
+type GridSearch<O> = Search<((u8, u8), u32), SeenGrid, O>;
+
+fn run_pathfinding<O>(grid: &ByteGrid, limit: u16, search: &mut GridSearch<O>) -> Option<u32>
+where
+    O: Order<((u8, u8), u32)>,
+{
+    search.push((START, 0));
     search.find(|search, ((x, y), cost)| {
         if grid[(x, y)] > 0 && grid[(x, y)] <= limit {
             return None;
@@ -51,11 +67,12 @@ fn part_1(grid: &ByteGrid, limit: u16) -> Option<u32> {
 fn part_2(grid: &ByteGrid, max_byte: u16) -> String {
     let mut step_size = (max_byte - 1024) / 2;
     let mut current = 1024 + step_size;
+    let mut search = bfs().with_seen_space(SeenGrid::new());
 
     step_size /= 2;
 
     while current > 1024 && current < max_byte {
-        if part_1(&grid, current).is_none() {
+        if run_pathfinding(&grid, current, &mut search).is_none() {
             if step_size == 1 {
                 let (x, y) = grid
                     .iter()
@@ -74,24 +91,94 @@ fn part_2(grid: &ByteGrid, max_byte: u16) -> String {
         if step_size > 1 {
             step_size /= 2;
         }
+
+        search.reset();
     }
 
     ":(".to_owned()
 }
 
-fn parser<'i>(w: u8, h: u8) -> impl Parser<'i, (ByteGrid, u16)> {
+fn part_2_union_find(size: (u8, u8), order: &[(u8, u8)]) -> String {
+    let area = size.area();
+    let top_right = area;
+    let bottom_left = area + 1;
+    let row_offset = size.0 as usize;
+    let r = size.0 - 1;
+    let b = size.1 - 1;
+
+    let mut uf = UnionFind::new(area + 2);
+    let mut seen = BitVec::from_elem(area, false);
+    let mut allowed_neighbors = ArrayVec::<_, 8>::new();
+
+    for (x, y) in order.iter().copied() {
+        let index = (x, y).index(&size);
+
+        allowed_neighbors.clear();
+        if x != 0 && y != 0 {
+            allowed_neighbors.push(index - row_offset - 1);
+        }
+        if y != 0 {
+            allowed_neighbors.push(index - row_offset);
+        }
+        if y != 0 && x != r {
+            allowed_neighbors.push(index - row_offset + 1);
+        }
+        if x != 0 {
+            allowed_neighbors.push(index - 1);
+        }
+        if x != 0 && y != b {
+            allowed_neighbors.push(index + row_offset - 1);
+        }
+        if y != b {
+            allowed_neighbors.push(index + row_offset);
+        }
+        if x != r && y != b {
+            allowed_neighbors.push(index + row_offset + 1);
+        }
+        if x != r {
+            allowed_neighbors.push(index + 1);
+        }
+
+        for neigh in allowed_neighbors.iter() {
+            if seen[*neigh] {
+                uf.union(index, *neigh);
+            }
+        }
+
+        if x == r || y == 0 {
+            uf.union(top_right, index);
+        }
+        if x == 0 || y == b {
+            uf.union(bottom_left, index);
+        }
+
+        seen.set(index, true);
+
+        if uf.find(top_right) == uf.find(bottom_left) {
+            return format!("{x},{y}");
+        }
+    }
+
+    ":(".to_owned()
+}
+
+fn parser<'i>(w: u8, h: u8) -> impl Parser<'i, (ByteGrid, Vec<(u8, u8)>)> {
     parser::uint::<u8>()
         .and_discard(b',')
         .and(parser::uint::<u8>())
         .and_discard(b'\n')
         .repeat_fold_mut(
-            move || (ByteGrid::new_with_default((w, h), [0u16; 71 * 71], 0), 1u16),
-            |(grid, next), (x, y)| {
-                grid[(x, y)] = *next;
-                *next += 1;
+            move || {
+                (
+                    ByteGrid::new_with_default((w, h), [0u16; 71 * 71], 0),
+                    Vec::with_capacity(4096),
+                )
+            },
+            |(grid, points), (x, y)| {
+                points.push((x, y));
+                grid[(x, y)] = points.len() as u16;
             },
         )
-        .map(|(grid, next)| (grid, next - 1))
 }
 
 struct SeenGrid {
@@ -135,4 +222,42 @@ where
             false
         }
     }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn part_2_uf_works_on_example() {
+        assert_eq!(part_2_union_find((7, 7), EXAMPLE_POINTS), "6,1",)
+    }
+
+    const EXAMPLE_POINTS: &[(u8, u8)] = &[
+        (5, 4),
+        (4, 2),
+        (4, 5),
+        (3, 0),
+        (2, 1),
+        (6, 3),
+        (2, 4),
+        (1, 5),
+        (0, 6),
+        (3, 3),
+        (2, 6),
+        (5, 1),
+        (1, 2),
+        (5, 5),
+        (2, 5),
+        (6, 5),
+        (1, 4),
+        (0, 4),
+        (6, 4),
+        (1, 1),
+        (6, 1),
+        (1, 0),
+        (0, 5),
+        (1, 6),
+        (2, 0),
+    ];
 }

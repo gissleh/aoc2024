@@ -1,33 +1,83 @@
+use num::traits::{WrappingAdd, WrappingSub};
 use num::One;
 use std::cmp::minmax;
 use std::ops::{Add, Sub};
 
 #[allow(dead_code)]
-pub trait CardinalNeighbors: Copy {
+pub trait CardinalNeighbors<T>: Copy {
     fn cardinal_neighbors(&self) -> [Self; 4];
+    fn cardinal_neighbors_n(&self, n: T) -> [Self; 4];
 }
 
-impl<T> CardinalNeighbors for (T, T)
+impl<T> CardinalNeighbors<T> for (T, T)
 where
     T: Copy + Add<Output = T> + Sub<Output = T> + One,
 {
     fn cardinal_neighbors(&self) -> [Self; 4] {
-        let one = T::one();
-        let (x, y) = *self;
+        self.cardinal_neighbors_n(T::one())
+    }
 
-        [(x, y - one), (x - one, y), (x + one, y), (x, y + one)]
+    fn cardinal_neighbors_n(&self, n: T) -> [Self; 4] {
+        let (x, y) = *self;
+        [(x, y - n), (x - n, y), (x + n, y), (x, y + n)]
     }
 }
 
-impl<T> CardinalNeighbors for [T; 2]
+impl<T> CardinalNeighbors<T> for [T; 2]
 where
     T: Copy + Add<Output = T> + Sub<Output = T> + One,
 {
     fn cardinal_neighbors(&self) -> [Self; 4] {
-        let one = T::one();
-        let [x, y] = *self;
+        self.cardinal_neighbors_n(T::one())
+    }
 
-        [[x, y - one], [x - one, y], [x + one, y], [x, y + one]]
+    fn cardinal_neighbors_n(&self, n: T) -> [Self; 4] {
+        let [x, y] = *self;
+        [[x, y - n], [x - n, y], [x + n, y], [x, y + n]]
+    }
+}
+
+#[allow(dead_code)]
+pub trait CardinalNeighborsWrapping<T>: Copy {
+    fn cardinal_neighbors_wrapping(&self) -> [Self; 4];
+    fn cardinal_neighbors_wrapping_n(&self, n: T) -> [Self; 4];
+}
+
+impl<T> CardinalNeighborsWrapping<T> for (T, T)
+where
+    T: Copy + WrappingAdd<Output = T> + WrappingSub<Output = T> + One,
+{
+    fn cardinal_neighbors_wrapping(&self) -> [Self; 4] {
+        self.cardinal_neighbors_wrapping_n(T::one())
+    }
+
+    fn cardinal_neighbors_wrapping_n(&self, n: T) -> [Self; 4] {
+        let (x, y) = *self;
+        [
+            (x, y.wrapping_sub(&n)),
+            (x.wrapping_sub(&n), y),
+            (x.wrapping_add(&n), y),
+            (x, y.wrapping_add(&n)),
+        ]
+    }
+}
+
+impl<T> CardinalNeighborsWrapping<T> for [T; 2]
+where
+    T: Copy + WrappingAdd<Output = T> + WrappingSub<Output = T> + One,
+{
+    fn cardinal_neighbors_wrapping(&self) -> [Self; 4] {
+        self.cardinal_neighbors_wrapping_n(T::one())
+    }
+
+    fn cardinal_neighbors_wrapping_n(&self, n: T) -> [Self; 4] {
+        let [x, y] = *self;
+        [
+            [x, y.wrapping_sub(&n)],
+            [x.wrapping_sub(&n), y],
+            [x.wrapping_add(&n), y],
+            [x, y.wrapping_add(&n)],
+        ]
     }
 }
 

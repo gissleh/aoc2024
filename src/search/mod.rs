@@ -41,6 +41,14 @@ where
         self.seen.reset();
     }
 
+    pub fn seen(&self) -> &SEEN {
+        &self.seen
+    }
+
+    pub fn order(&self) -> &ORDER {
+        &self.order
+    }
+
     pub fn push(&mut self, s: S) -> bool {
         if self.seen.try_mark_seen(s) {
             self.order.push(s);

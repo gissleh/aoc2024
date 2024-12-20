@@ -20,7 +20,7 @@ use crate::parser::rewind::Rewind;
 use crate::parser::within::{QuotedBy, Within};
 use crate::utils::GatherTarget;
 pub use and::{And, AndDiscard};
-pub use basic::{everything, line, word};
+pub use basic::{everything, line, word, word_terminated_by};
 pub use conditional::OnlyIf;
 pub use numbers::{base62_digit, digit, hex_digit, int, signed_int, uint, unsigned_int};
 

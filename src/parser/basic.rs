@@ -12,6 +12,10 @@ pub fn line<'i>() -> impl Parser<'i, &'i [u8]> {
     EverythingUntilChar(b'\n')
 }
 
+pub fn word_terminated_by<'i>(ch: u8) -> impl Parser<'i, &'i [u8]> {
+    EverythingUntilChar(ch)
+}
+
 struct Everything;
 
 impl<'i> Parser<'i, &'i [u8]> for Everything {
