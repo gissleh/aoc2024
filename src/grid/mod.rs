@@ -128,6 +128,14 @@ where
             default,
         }
     }
+
+    pub const fn new_const(size: C, storage: S, default: T) -> Self {
+        Self {
+            size,
+            storage,
+            default,
+        }
+    }
 }
 
 impl<C, S, T> Grid<C, S, T>

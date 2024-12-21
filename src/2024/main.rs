@@ -1,6 +1,7 @@
 #![feature(binary_heap_into_iter_sorted)]
 #![feature(array_windows)]
 #![feature(cmp_minmax)]
+#![feature(array_chunks)]
 
 mod day01;
 mod day02;
@@ -22,6 +23,7 @@ mod day17;
 mod day18;
 mod day19;
 mod day20;
+mod day21;
 
 use common::runner::run;
 
@@ -46,7 +48,7 @@ fn main() {
     run(2024, 18, day18::main);
     run(2024, 19, day19::main);
     run(2024, 20, day20::main);
-    //run(2024, 21, day21::main);
+    run(2024, 21, day21::main);
     //run(2024, 22, day22::main);
     //run(2024, 23, day23::main);
     //run(2024, 24, day24::main);
