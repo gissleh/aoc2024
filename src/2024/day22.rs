@@ -29,7 +29,7 @@ fn parse(input: &[u8]) -> Vec<i32> {
 
 fn next_secret(secret: i32) -> i32 {
     let secret = ((secret << 6) ^ secret) & 16777215;
-    let secret = ((secret >> 5) ^ secret) & 16777215;
+    let secret = (secret >> 5) ^ secret;
     let secret = ((secret << 11) ^ secret) & 16777215;
     secret
 }
@@ -44,15 +44,16 @@ fn nth_secret(secret: i32, n: i32) -> i32 {
 }
 
 fn part_2(numbers: &[i32]) -> i32 {
-    let mut seen_seq = [false; 20*20*20*20];
+    let mut seen_seq = [0; 20*20*20*20];
     let mut seq_totals = [0; 20*20*20*20];
 
-    for number in numbers {
-        seen_seq.fill(false);
+    for (i, number) in numbers.iter().enumerate() {
+        let i = i as u8;
+
         for (price, seq) in SecretIterator(*number).sequences(2000) {
             let key = cache_key(seq);
-            if !seen_seq[key] {
-                seen_seq[key] = true;
+            if seen_seq[key] != i {
+                seen_seq[key] = i;
                 seq_totals[key] += price;
             }
         }
