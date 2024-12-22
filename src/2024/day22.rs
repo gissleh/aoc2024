@@ -43,7 +43,7 @@ fn nth_secret(secret: i32, n: i32) -> i32 {
     secret
 }
 
-fn part_2(numbers: &[i32]) -> i32 {
+fn part_2(numbers: &[i32]) -> u16 {
     let mut seen_seq = [0; 20*20*20*20];
     let mut seq_totals = [0; 20*20*20*20];
 
@@ -54,7 +54,7 @@ fn part_2(numbers: &[i32]) -> i32 {
             let key = cache_key(seq);
             if seen_seq[key] != i {
                 seen_seq[key] = i;
-                seq_totals[key] += price;
+                seq_totals[key] += price as u16;
             }
         }
     }
