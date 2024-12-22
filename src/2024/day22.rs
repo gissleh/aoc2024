@@ -8,6 +8,8 @@ pub fn main(r: &mut Runner, input: &[u8]) {
 
     r.part("Part 1", || part_1(&numbers));
     r.part("Part 2", || part_2(&numbers));
+    r.set_tail("Part 1");
+    r.part("Part 2 (Parallel)", || part_2_rayon(&numbers));
 
     r.info("Numbers", &numbers.len());
 }
@@ -44,8 +46,8 @@ fn nth_secret(secret: i32, n: i32) -> i32 {
 }
 
 fn part_2(numbers: &[i32]) -> u16 {
-    let mut seen_seq = [0; 20*20*20*20];
-    let mut seq_totals = [0; 20*20*20*20];
+    let mut seen_seq = [0; 20 * 20 * 20 * 20];
+    let mut seq_totals = [0; 20 * 20 * 20 * 20];
 
     for (i, number) in numbers.iter().enumerate() {
         let i = i as u8;
@@ -60,6 +62,46 @@ fn part_2(numbers: &[i32]) -> u16 {
     }
 
     *seq_totals.iter().max().unwrap()
+}
+
+fn part_2_rayon(numbers: &[i32]) -> u16 {
+    numbers
+        .par_iter()
+        .fold(
+            || {
+                (
+                    1u8,
+                    vec![0u8; 20 * 20 * 20 * 20],
+                    vec![0u16; 20 * 20 * 20 * 20],
+                )
+            },
+            |(i, mut seen_map, mut totals), number| {
+                let i = if i == 0 { 255 } else { i };
+
+                for (price, seq) in SecretIterator(*number).sequences(2000) {
+                    let key = cache_key(seq);
+                    if seen_map[key] != i {
+                        seen_map[key] = i;
+                        totals[key] += price as u16;
+                    }
+                }
+
+                (i.wrapping_add(1), seen_map, totals)
+            },
+        )
+        .map(|(.., prev)| prev)
+        .reduce_with(|mut prev, totals| {
+            for i in 0..prev.len() {
+                prev[i] += totals[i];
+            }
+
+            prev
+        })
+        .unwrap()
+        .iter()
+        .max()
+        .copied()
+        .unwrap()
 }
 
 struct SecretIterator(i32);
@@ -93,9 +135,9 @@ impl Iterator for SecretIterator {
     }
 }
 
-fn cache_key([a,b,c,d]: [i8; 4]) -> usize {
-    (((a as i32 + 10) * 20*20*20)
-        + ((b as i32 + 10) * 20*20)
+fn cache_key([a, b, c, d]: [i8; 4]) -> usize {
+    (((a as i32 + 10) * 20 * 20 * 20)
+        + ((b as i32 + 10) * 20 * 20)
         + ((c as i32 + 10) * 20)
         + (d as i32 + 10)) as usize
 }
