@@ -2,7 +2,6 @@ use common::parser;
 use common::parser::Parser;
 use common::runner::Runner;
 use rayon::prelude::*;
-use rustc_hash::{FxHashMap, FxHashSet};
 
 pub fn main(r: &mut Runner, input: &[u8]) {
     let numbers = r.prep("Parse", || parse(input));
@@ -45,19 +44,21 @@ fn nth_secret(secret: i32, n: i32) -> i32 {
 }
 
 fn part_2(numbers: &[i32]) -> i32 {
-    let mut seen_seq = FxHashSet::default();
-    let mut seq_totals = FxHashMap::default();
+    let mut seen_seq = [false; 20*20*20*20];
+    let mut seq_totals = [0; 20*20*20*20];
 
     for number in numbers {
-        seen_seq.clear();
+        seen_seq.fill(false);
         for (price, seq) in SecretIterator(*number).sequences(2000) {
-            if seen_seq.insert(seq) {
-                *seq_totals.entry(seq).or_insert(0i32) += price;
+            let key = cache_key(seq);
+            if !seen_seq[key] {
+                seen_seq[key] = true;
+                seq_totals[key] += price;
             }
         }
     }
 
-    *seq_totals.values().max().unwrap()
+    *seq_totals.iter().max().unwrap()
 }
 
 struct SecretIterator(i32);
@@ -89,6 +90,13 @@ impl Iterator for SecretIterator {
         self.0 = next_secret(self.0);
         Some(prev)
     }
+}
+
+fn cache_key([a,b,c,d]: [i8; 4]) -> usize {
+    (((a as i32 + 10) * 20*20*20)
+        + ((b as i32 + 10) * 20*20)
+        + ((c as i32 + 10) * 20)
+        + (d as i32 + 10)) as usize
 }
 
 #[cfg(test)]
