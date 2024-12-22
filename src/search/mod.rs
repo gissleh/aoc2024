@@ -14,7 +14,7 @@ use crate::search::attributes::Heuristic;
 use crate::utils::GatherTarget;
 pub use attributes::{Cost, Key, OnlyKey, KE};
 pub use order::Order;
-pub use seen::{NoSeenSpace, ReEntrantSeenMap, SeenSpace};
+pub use seen::{BitArrSeenSpace, NoSeenSpace, ReEntrantSeenMap, SeenSpace};
 
 pub struct Search<S, SEEN, ORDER>
 where

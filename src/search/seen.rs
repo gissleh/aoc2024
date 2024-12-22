@@ -302,3 +302,62 @@ impl<S> SeenSpace<S> for NoSeenSpace {
         true
     }
 }
+
+pub struct BitArrSeenSpace<C, const N: usize> {
+    data: [u32; N],
+    size: C,
+}
+
+impl<const N: usize, C> BitArrSeenSpace<C, N>
+where
+    C: GridCoordinate,
+{
+    pub fn new(size: C) -> Self {
+        #[cfg(debug_assertions)]
+        assert!(
+            size.area() < N * 32,
+            "BitArrSeenSpace too small (size{}, cap={})",
+            size.area(),
+            N * 32
+        );
+
+        Self { data: [0; N], size }
+    }
+}
+
+impl<const N: usize, C> BitArrSeenSpace<C, N>
+where
+    C: GridCoordinate,
+{
+    #[inline]
+    fn index_of(&self, pos: C) -> (usize, u32) {
+        let index = pos.index(&self.size);
+        (index / 32, (index % 32) as u32)
+    }
+}
+
+impl<const N: usize, S, C> SeenSpace<S> for BitArrSeenSpace<C, N>
+where
+    S: Key<C>,
+    C: GridCoordinate,
+{
+    fn reset(&mut self) {
+        self.data.fill(0);
+    }
+
+    fn has_seen(&self, state: &S) -> bool {
+        let (index, bit) = self.index_of(state.key());
+        self.data[index] & (1 << bit) != 0
+    }
+
+    fn try_mark_seen(&mut self, state: S) -> bool {
+        let (index, bit) = self.index_of(state.key());
+
+        if self.data[index] & (1 << bit) == 0 {
+            self.data[index] |= 1 << bit;
+            true
+        } else {
+            false
+        }
+    }
+}
