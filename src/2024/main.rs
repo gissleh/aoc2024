@@ -2,6 +2,7 @@
 #![feature(array_windows)]
 #![feature(cmp_minmax)]
 #![feature(array_chunks)]
+#![feature(iter_map_windows)]
 
 mod day01;
 mod day02;
@@ -24,6 +25,7 @@ mod day18;
 mod day19;
 mod day20;
 mod day21;
+mod day22;
 
 use common::runner::run;
 
@@ -49,7 +51,7 @@ fn main() {
     run(2024, 19, day19::main);
     run(2024, 20, day20::main);
     run(2024, 21, day21::main);
-    //run(2024, 22, day22::main);
+    run(2024, 22, day22::main);
     //run(2024, 23, day23::main);
     //run(2024, 24, day24::main);
     //run(2024, 25, day25::main);
