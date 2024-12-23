@@ -4,6 +4,7 @@ pub struct Graph<N, E, const CAP: usize> {
     nodes: Vec<N>,
     edges: Vec<ArrayVec<(usize, E), CAP>>,
 }
+
 impl<N, E, const CAP: usize> Graph<N, E, CAP>
 where
     N: Eq,
@@ -99,6 +100,11 @@ where
     #[inline]
     pub fn len(&self) -> usize {
         self.nodes.len()
+    }
+
+    #[inline]
+    pub fn edge_count(&self) -> usize {
+        self.edges.iter().map(|l| l.len()).sum()
     }
 }
 
