@@ -1,4 +1,7 @@
 use arrayvec::ArrayVec;
+use rustc_hash::FxHashMap;
+use std::collections::hash_map::Entry;
+use std::hash::Hash;
 
 pub struct Graph<N, E, const CAP: usize> {
     nodes: Vec<N>,
@@ -115,6 +118,57 @@ where
     pub fn connect_mutual(&mut self, src: usize, dst: usize, edge: E) {
         self.edges[src].push((dst, edge));
         self.edges[dst].push((src, edge));
+    }
+}
+
+impl<N, E, const CAP: usize> Graph<N, E, CAP>
+where
+    N: Copy + Eq + Hash,
+{
+    pub fn builder() -> GraphBuilder<N, E, CAP> {
+        GraphBuilder {
+            graph: Self::new(),
+            map: FxHashMap::with_capacity_and_hasher(CAP * 8, Default::default()),
+        }
+    }
+}
+
+pub struct GraphBuilder<N, E, const CAP: usize> {
+    graph: Graph<N, E, CAP>,
+    map: FxHashMap<N, usize>,
+}
+
+impl<N, E, const CAP: usize> GraphBuilder<N, E, CAP>
+where
+    N: Copy + Eq + Hash,
+{
+    pub fn ensure(&mut self, node: N) -> usize {
+        match self.map.entry(node) {
+            Entry::Occupied(entry) => *entry.get(),
+            Entry::Vacant(entry) => *entry.insert(self.graph.add_node(node)),
+        }
+    }
+
+    pub fn ensure_connect(&mut self, src: N, dst: N, edge: E) {
+        let src = self.ensure(src);
+        let dst = self.ensure(dst);
+        self.graph.connect(src, dst, edge);
+    }
+
+    pub fn to_graph(self) -> Graph<N, E, CAP> {
+        self.graph
+    }
+}
+
+impl<N, E, const CAP: usize> GraphBuilder<N, E, CAP>
+where
+    N: Copy + Eq + Hash,
+    E: Copy,
+{
+    pub fn ensure_connect_mutual(&mut self, src: N, dst: N, edge: E) {
+        let src = self.ensure(src);
+        let dst = self.ensure(dst);
+        self.graph.connect_mutual(src, dst, edge);
     }
 }
 

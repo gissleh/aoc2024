@@ -114,12 +114,11 @@ fn parse(input: &[u8]) -> LanGraph {
         .iter()
         .array_chunks::<6>()
         .map(|c| ([*c[0], *c[1]], [*c[3], *c[4]]))
-        .fold(LanGraph::new(), |mut g, (a, b)| {
-            let a = g.ensure_node(a);
-            let b = g.ensure_node(b);
-            g.connect_mutual(a, b, ());
+        .fold(LanGraph::builder(), |mut g, (a, b)| {
+            g.ensure_connect_mutual(a, b, ());
             g
         })
+        .to_graph()
 }
 
 #[cfg(test)]
