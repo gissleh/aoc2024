@@ -7,11 +7,7 @@ pub fn main(r: &mut Runner, input: &[u8]) {
     let wires = r.prep("Parse", || parse(input));
 
     r.part("Part 1", || part_1(&wires));
-
-    r.info(
-        "Z Bits",
-        &wires.z.iter().position(|v| *v == Op::Null).unwrap(),
-    );
+    r.info("Named gates", &wires.named.len());
 }
 
 fn part_1(wires: &Wires) -> u64 {
@@ -25,20 +21,19 @@ fn parse(input: &[u8]) -> Wires {
 struct Wires {
     x: u64,
     y: u64,
-    z: [Op; 64],
     named: FxHashMap<u16, Op>,
 }
 
 impl Wires {
     fn run_z(&self) -> u64 {
         let mut res = 0;
-        for i in 0..64 {
-            if self.z[i] == Op::Null {
-                break;
-            }
+        for z in 0..64 {
+            let id = (36 * 36 * 35) + ((z / 10) * 36) + (z % 10);
 
-            if self.run_op(self.z[i]) {
-                res |= 1 << i;
+            if let Some(op) = self.named.get(&id) {
+                if self.run_op(*op) {
+                    res |= 1 << z;
+                }
             }
         }
 
@@ -92,16 +87,8 @@ impl Wires {
                     .and(Ref::parser())
                     .delimited_by(b'\n')
                     .repeat_fold_mut(
-                        || {
-                            (
-                                FxHashMap::with_capacity_and_hasher(128, Default::default()),
-                                [Op::default(); 64],
-                            )
-                        },
-                        |(named, z), (op, out)| match out {
-                            Ref::Z(n) => {
-                                z[n as usize] = op;
-                            }
+                        || FxHashMap::with_capacity_and_hasher(128, Default::default()),
+                        |named, (op, out)| match out {
                             Ref::Named(id) => {
                                 named.insert(id, op);
                             }
@@ -109,7 +96,7 @@ impl Wires {
                         },
                     ),
             )
-            .map(|((x, y), (named, z))| Self { x, y, z, named })
+            .map(|((x, y), named)| Self { x, y, named })
     }
 }
 
@@ -119,7 +106,6 @@ enum Ref {
     Null,
     X(u16),
     Y(u16),
-    Z(u16),
     Named(u16),
 }
 
@@ -130,9 +116,7 @@ impl Ref {
         }
 
         fn op_number(a: [u8; 3]) -> u16 {
-            (((a[0] - b'a') as u16) * 26 * 26)
-                + (((a[1] - b'a') as u16) * 26)
-                + ((a[2] - b'a') as u16)
+            ((digit(a[0]) as u16) * 36 * 36) + ((digit(a[1]) as u16) * 36) + (digit(a[2]) as u16)
         }
 
         parser::n_bytes().map(|name: [u8; 3]| {
@@ -140,8 +124,6 @@ impl Ref {
                 Self::X(two_digit(name))
             } else if name[0] == b'y' {
                 Self::Y(two_digit(name))
-            } else if name[0] == b'z' {
-                Self::Z(two_digit(name))
             } else {
                 Self::Named(op_number(name))
             }
@@ -171,6 +153,14 @@ impl Op {
                 b"XOR" => Op::XOR(a, b),
                 _ => unreachable!(),
             })
+    }
+}
+
+fn digit(v: u8) -> u8 {
+    match v {
+        b'0'..=b'9' => v - b'0',
+        b'a'..=b'z' => v - b'a' + 10,
+        _ => unreachable!(),
     }
 }
 
