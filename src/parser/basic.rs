@@ -16,6 +16,10 @@ pub fn word_terminated_by<'i>(ch: u8) -> impl Parser<'i, &'i [u8]> {
     EverythingUntilChar(ch)
 }
 
+pub fn n_bytes<'i, const N: usize>() -> impl Parser<'i, [u8; N]> {
+    ByteArray::<N>
+}
+
 struct Everything;
 
 impl<'i> Parser<'i, &'i [u8]> for Everything {
@@ -49,7 +53,7 @@ impl<'i> Parser<'i, &'i [u8]> for EverythingUntilChar {
         }
 
         match input.iter().position(|&c| c == self.0) {
-            Some(i) => Some((&input[..i], &input[i + 1..])),
+            Some(i) => Some((&input[..i], &input[i..])),
             None => Some((input, &input[input.len()..])),
         }
     }
@@ -57,5 +61,19 @@ impl<'i> Parser<'i, &'i [u8]> for EverythingUntilChar {
     #[inline]
     fn can_parse(&self, input: &'i [u8]) -> bool {
         !input.is_empty()
+    }
+}
+
+struct ByteArray<const N: usize>;
+
+impl<'i, const N: usize> Parser<'i, [u8; N]> for ByteArray<N> {
+    fn parse(&self, input: &'i [u8]) -> Option<([u8; N], &'i [u8])> {
+        if input.len() >= N {
+            let mut res = [0u8; N];
+            res.copy_from_slice(&input[..N]);
+            Some((res, &input[N..]))
+        } else {
+            None
+        }
     }
 }
