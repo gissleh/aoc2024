@@ -5,15 +5,15 @@ pub fn everything<'i>() -> impl Parser<'i, &'i [u8]> {
 }
 
 pub fn word<'i>() -> impl Parser<'i, &'i [u8]> {
-    EverythingUntilChar(b' ')
+    EverythingUntilChar(b' ', false)
 }
 
 pub fn line<'i>() -> impl Parser<'i, &'i [u8]> {
-    EverythingUntilChar(b'\n')
+    EverythingUntilChar(b'\n', true)
 }
 
 pub fn word_terminated_by<'i>(ch: u8) -> impl Parser<'i, &'i [u8]> {
-    EverythingUntilChar(ch)
+    EverythingUntilChar(ch, false)
 }
 
 pub fn n_bytes<'i, const N: usize>() -> impl Parser<'i, [u8; N]> {
@@ -43,7 +43,7 @@ impl<'i> Parser<'i, &'i [u8]> for Everything {
     }
 }
 
-struct EverythingUntilChar(u8);
+struct EverythingUntilChar(u8, bool);
 
 impl<'i> Parser<'i, &'i [u8]> for EverythingUntilChar {
     #[inline]
@@ -53,14 +53,18 @@ impl<'i> Parser<'i, &'i [u8]> for EverythingUntilChar {
         }
 
         match input.iter().position(|&c| c == self.0) {
-            Some(i) => Some((&input[..i], &input[i..])),
-            None => Some((input, &input[input.len()..])),
+            Some(i) => {
+                if i > 0 || !self.1 {
+                    Some((&input[..i], &input[if self.1 { i + 1 } else { i }..]))
+                } else {
+                    None
+                }
+            }
+            _ => Some((
+                input,
+                &input[if self.1 { input.len() + 1 } else { input.len() }..],
+            )),
         }
-    }
-
-    #[inline]
-    fn can_parse(&self, input: &'i [u8]) -> bool {
-        !input.is_empty()
     }
 }
 
